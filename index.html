@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ميكسات - أشهى الكريب والحواوشي والمكرونة في مصر. اطلب أونلاين واستمتع بأحلى الأكلات." />
+  <meta name="theme-color" content="#CC0000" />
+  <meta property="og:title"       content="ميكسات - أكل بنكهة مختلفة" />
+  <meta property="og:description" content="كريب · كبدة · حواوشي · مكرونة" />
+  <meta property="og:type"        content="restaurant" />
+  <title>ميكسات - أشهى الأكلات</title>
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ==========================================
+     شريط التحميل
+     ========================================== -->
+<div id="page-loader">
+  <div class="loader-logo">ميكسات</div>
+  <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+</div>
+
+<!-- ==========================================
+     شريط التنقل
+     ========================================== -->
+<nav id="navbar">
+  <div class="container">
+    <div class="nav-inner">
+      <!-- اللوغو -->
+      <a href="#hero" class="nav-logo">ميك<span>سات</span></a>
+
+      <!-- روابط الديسكتوب -->
+      <div class="nav-links">
+        <a href="#best-sellers" class="nav-link">الأكثر طلباً</a>
+        <a href="#menu"         class="nav-link">المنيو</a>
+        <a href="#offers"       class="nav-link">العروض</a>
+        <a href="#about"        class="nav-link">عنّا</a>
+        <a href="#reviews"      class="nav-link">التقييمات</a>
+        <a href="#contact"      class="nav-link">تواصل</a>
+      </div>
+
+      <!-- الأزرار -->
+      <div class="nav-actions">
+        <a href="admin.html" class="btn-admin-nav" title="لوحة التحكم">
+          <i class="fas fa-lock"></i> إدارة
+        </a>
+        <button class="btn-order-nav" onclick="openCart()">
+          <i class="fas fa-shopping-cart"></i>
+          طلباتي
+          <span id="cart-badge" style="background:rgba(255,255,255,.2);padding:1px 7px;border-radius:99px;font-size:.75rem;">0</span>
+        </button>
+        <button class="nav-burger" id="nav-burger" aria-label="القائمة">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile Nav -->
+<div class="nav-mobile" id="nav-mobile">
+  <a href="#best-sellers" class="nav-link">⭐ الأكثر طلباً</a>
+  <a href="#menu"         class="nav-link">🍽️ المنيو الكامل</a>
+  <a href="#offers"       class="nav-link">🔥 العروض</a>
+  <a href="#about"        class="nav-link">📖 عنّا</a>
+  <a href="#reviews"      class="nav-link">💬 التقييمات</a>
+  <a href="#contact"      class="nav-link">📞 تواصل معنا</a>
+  <a href="admin.html"    class="nav-link" style="color:var(--gold)">🔐 لوحة التحكم</a>
+</div>
+
+<!-- ==========================================
+     الهيرو
+     ========================================== -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-particles"></div>
+
+  <div class="container hero-content">
+    <div class="hero-badge">
+      <i class="fas fa-fire"></i>
+      أشهى الأكلات في مصر
+    </div>
+
+    <h1 class="hero-title">
+      <span class="brand-red">ميك</span><span class="brand-gold">سات</span>
+    </h1>
+
+    <p class="hero-tagline">
+      <span>كريب</span><span class="sep">·</span>
+      <span>كبدة</span><span class="sep">·</span>
+      <span>حواوشي</span><span class="sep">·</span>
+      <span>مكرونة</span>
+    </p>
+
+    <div class="hero-cta">
+      <a href="#menu" class="btn-primary">
+        <i class="fas fa-utensils"></i> شوف المنيو
+      </a>
+      <button class="btn-secondary" id="hero-whatsapp-btn">
+        <i class="fab fa-whatsapp"></i> اطلب الآن
+      </button>
+    </div>
+
+    <div class="hero-stats" id="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-value"><span id="hero-stats-count">50</span>+</div>
+        <div class="hero-stat-label">صنف متاح</div>
+      </div>
+      <div class="hero-stat-sep"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">100<span>%</span></div>
+        <div class="hero-stat-label">أكل طازج</div>
+      </div>
+      <div class="hero-stat-sep"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">⭐ 4.9</div>
+        <div class="hero-stat-label">تقييم الزباين</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-scroll">
+    <div class="hero-scroll-wheel"></div>
+    <span>تمرر للأسفل</span>
+  </div>
+</section>
+
+<!-- ==========================================
+     شريط المميزات
+     ========================================== -->
+<section id="features">
+  <div class="container">
+    <div class="features-grid">
+      <div class="feature-item reveal">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-text">
+          <strong>تسليم سريع</strong>
+          <span>وصول طلبك في أقل وقت</span>
+        </div>
+      </div>
+      <div class="feature-item reveal reveal-delay-1">
+        <div class="feature-icon">🌟</div>
+        <div class="feature-text">
+          <strong>جودة عالية</strong>
+          <span>خامات طازجة يومياً</span>
+        </div>
+      </div>
+      <div class="feature-item reveal reveal-delay-2">
+        <div class="feature-icon">🎨</div>
+        <div class="feature-text">
+          <strong>خلطات مميزة</strong>
+          <span>وصفات سرية فريدة من نوعها</span>
+        </div>
+      </div>
+      <div class="feature-item reveal reveal-delay-3">
+        <div class="feature-icon">💰</div>
+        <div class="feature-text">
+          <strong>أسعار منافسة</strong>
+          <span>أحسن أكل بأفضل سعر</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================
+     الأكثر طلباً
+     ========================================== -->
+<section id="best-sellers" class="section-py">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge reveal"><i class="fas fa-fire"></i> الأكثر طلباً</div>
+      <h2 class="section-title reveal">أحلى الأصناف <span>عندنا</span></h2>
+      <p class="section-subtitle reveal">الأصناف اللي زباينا بيطلبوها دايماً وما بتخيبش ظنهم</p>
+    </div>
+    <div class="best-sellers-grid" id="best-sellers-grid">
+      <!-- تتعبأ من JavaScript -->
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================
+     العروض
+     ========================================== -->
+<section id="offers-section" class="section-py">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge reveal"><i class="fas fa-tag"></i> عروض خاصة</div>
+      <h2 class="section-title reveal">عروض <span>اليوم</span></h2>
+      <p class="section-subtitle reveal">اغتنم الفرصة وجرب أحسن خلطات ميكسات بأسعار مميزة</p>
+    </div>
+    <div class="offers-grid" id="offers-grid">
+      <!-- تتعبأ من JavaScript -->
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================
+     المنيو الكامل
+     ========================================== -->
+<section id="menu" class="section-py">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge reveal"><i class="fas fa-utensils"></i> قائمة الطعام</div>
+      <h2 class="section-title reveal">المنيو <span>الكامل</span></h2>
+      <p class="section-subtitle reveal">اختار وانت مرتاح - كل حاجة طازجة ومتعملة وقت الطلب</p>
+    </div>
+
+    <!-- البحث والتصفية -->
+    <div class="menu-controls">
+      <div class="menu-search-wrap">
+        <i class="fas fa-search menu-search-icon"></i>
+        <input type="text" id="menu-search" class="menu-search" placeholder="ابحث عن صنف..." autocomplete="off" />
+      </div>
+    </div>
+
+    <!-- تبويبات الفئات -->
+    <div class="menu-tabs" id="menu-tabs">
+      <!-- تتعبأ من JavaScript -->
+    </div>
+
+    <!-- شبكة الأصناف -->
+    <div class="menu-grid" id="menu-grid">
+      <!-- تتعبأ من JavaScript -->
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================
+     عن ميكسات
+     ========================================== -->
+<section id="about" class="section-py">
+  <div class="container">
+    <div class="about-grid">
+      <!-- النص -->
+      <div class="about-text-col">
+        <div class="section-badge reveal"><i class="fas fa-info-circle"></i> عنّا</div>
+        <h2 class="section-title reveal">قصة <span>ميكسات</span></h2>
+        <p class="about-body reveal" id="about-text">
+          <!-- تتعبأ من JavaScript -->
+        </p>
+        <ul class="about-list">
+          <li class="about-item reveal">
+            <div class="about-check"><i class="fas fa-check"></i></div>
+            خامات طازجة يومياً بدون مواد حافظة
+          </li>
+          <li class="about-item reveal reveal-delay-1">
+            <div class="about-check"><i class="fas fa-check"></i></div>
+            وصفات سرية فريدة من نوعها
+          </li>
+          <li class="about-item reveal reveal-delay-2">
+            <div class="about-check"><i class="fas fa-check"></i></div>
+            سرعة في التحضير والتوصيل
+          </li>
+          <li class="about-item reveal reveal-delay-3">
+            <div class="about-check"><i class="fas fa-check"></i></div>
+            أسعار تناسب الجميع
+          </li>
+        </ul>
+        <a href="#menu" class="btn-primary" style="display:inline-flex;gap:10px">
+          <i class="fas fa-utensils"></i> شوف المنيو
+        </a>
+      </div>
+
+      <!-- الإحصائيات -->
+      <div class="about-visual-col">
+        <div class="about-stat-card reveal">
+          <div class="about-stat-num">50<span style="font-size:1.5rem;color:var(--red)">+</span></div>
+          <div class="about-stat-label">صنف متاح</div>
+        </div>
+        <div class="about-stat-card gold-border reveal reveal-delay-1">
+          <div class="about-stat-num">⭐ 4.9</div>
+          <div class="about-stat-label">متوسط التقييم</div>
+        </div>
+        <div class="about-stat-card gold-border reveal reveal-delay-2">
+          <div class="about-stat-num">1000<span style="font-size:1.5rem;color:var(--gold)">+</span></div>
+          <div class="about-stat-label">زبون سعيد</div>
+        </div>
+        <div class="about-stat-card reveal reveal-delay-3">
+          <div class="about-stat-num">6</div>
+          <div class="about-stat-label">فئات متنوعة</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================
+     التقييمات
+     ========================================== -->
+<section id="reviews" class="section-py">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge reveal"><i class="fas fa-star"></i> آراء الزباين</div>
+      <h2 class="section-title reveal">بيقولوا <span>عنّا</span> إيه؟</h2>
+      <p class="section-subtitle reveal">آراء حقيقية من زباين جربوا ميكسات</p>
+    </div>
+
+    <!-- شبكة التقييمات -->
+    <div class="reviews-grid" id="reviews-grid">
+      <!-- تتعبأ من JavaScript -->
+    </div>
+
+    <!-- نموذج إضافة تقييم -->
+    <div class="review-form-wrap reveal">
+      <div class="review-form-title">
+        <i class="fas fa-pen" style="color:var(--gold);margin-left:8px"></i>
+        اتفضل قيّمنا!
+      </div>
+      <form id="review-form">
+        <div class="form-group">
+          <label class="form-label">اسمك</label>
+          <input type="text" id="rev-name" class="form-input" placeholder="محمد أحمد..." required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">تقييمك</label>
+          <div class="star-rating">
+            <input type="radio" name="rating" id="s5" value="5" checked /><label for="s5">★</label>
+            <input type="radio" name="rating" id="s4" value="4" /><label for="s4">★</label>
+            <input type="radio" name="rating" id="s3" value="3" /><label for="s3">★</label>
+            <input type="radio" name="rating" id="s2" value="2" /><label for="s2">★</label>
+            <input type="radio" name="rating" id="s1" value="1" /><label for="s1">★</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">رأيك في ميكسات</label>
+          <textarea id="rev-comment" class="form-input" rows="3" placeholder="الأكل كان..." required style="resize:vertical"></textarea>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%;justify-content:center;margin-top:4px">
+          <i class="fas fa-paper-plane"></i> ارسل تقييمك
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================
+     التواصل والموقع
+     ========================================== -->
+<section id="contact" class="section-py">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge reveal"><i class="fas fa-phone"></i> تواصل معنا</div>
+      <h2 class="section-title reveal">احنا <span>هنا</span> ليك</h2>
+      <p class="section-subtitle reveal">اتواصل معنا أو اطلب مباشرة عبر الواتساب</p>
+    </div>
+
+    <div class="contact-grid">
+      <!-- بيانات التواصل -->
+      <div class="contact-info">
+        <div class="contact-card reveal">
+          <div class="contact-icon">📞</div>
+          <div>
+            <div class="contact-card-title">PHONE · التليفون</div>
+            <div class="contact-card-value" data-setting="phone">01000000000</div>
+          </div>
+        </div>
+
+        <div class="contact-card reveal reveal-delay-1">
+          <div class="contact-icon">📍</div>
+          <div>
+            <div class="contact-card-title">ADDRESS · العنوان</div>
+            <div class="contact-card-value" data-setting="address">القاهرة، مصر</div>
+          </div>
+        </div>
+
+        <div class="contact-card reveal reveal-delay-2">
+          <div class="contact-icon">🕐</div>
+          <div>
+            <div class="contact-card-title">HOURS · ساعات العمل</div>
+            <div class="contact-card-value" data-setting="workingHours">يومياً 12 ظهراً - 2 صباحاً</div>
+          </div>
+        </div>
+
+        <div class="contact-card reveal reveal-delay-3">
+          <div class="contact-icon">🚗</div>
+          <div>
+            <div class="contact-card-title">DELIVERY · التوصيل</div>
+            <div class="contact-card-value" data-setting="deliveryAreas">نغطي جميع مناطق القاهرة والجيزة</div>
+          </div>
+        </div>
+
+        <!-- زر الواتساب -->
+        <a href="#" data-whatsapp class="btn-whatsapp reveal" id="contact-whatsapp-btn">
+          <i class="fab fa-whatsapp fa-lg"></i>
+          اطلب عبر الواتساب الآن
+        </a>
+      </div>
+
+      <!-- الخريطة -->
+      <div class="contact-map reveal">
+        <!-- Floating Header Badge -->
+        <div style="position:absolute;top:16px;right:16px;left:16px;z-index:10;background:rgba(18,18,18,0.85);backdrop-filter:blur(10px);padding:12px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-md);">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;flex-shrink:0;">
+            <i class="fas fa-map-marker-alt"></i>
+          </div>
+          <div>
+            <div style="font-weight:800;color:#fff;font-size:0.95rem;">موقعنا على الخريطة</div>
+            <div style="font-size:0.8rem;color:var(--text-300);" data-setting="address">الخصوص - بالقرب من مدرسة فتحي داود</div>
+          </div>
+        </div>
+
+        <!-- Full Bleed Map Iframe -->
+        <iframe src="https://maps.google.com/maps?q=48X7%2BXQJ&t=&z=16&ie=UTF8&iwloc=&output=embed" width="100%" height="100%" style="border:0;display:block;width:100%;height:100%;min-height:440px;" allowfullscreen="" loading="lazy"></iframe>
+
+        <!-- Floating Bottom Button -->
+        <a href="https://www.google.com/maps/search/?api=1&query=48X7%2BXQJ" target="_blank" style="position:absolute;bottom:16px;right:16px;left:16px;z-index:10;background:rgba(18,18,18,0.9);backdrop-filter:blur(10px);padding:12px;border-radius:12px;border:1px solid var(--gold);color:var(--gold);text-align:center;font-weight:700;font-size:0.88rem;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;transition:all var(--t-fast);box-shadow:var(--shadow-md);">
+          <i class="fas fa-directions"></i> فتح الاتجاهات على خرائط Google Maps
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================
+     الفوتر
+     ========================================== -->
+<footer id="footer">
+  <div class="container">
+    <div class="footer-top">
+      <!-- البراند -->
+      <div>
+        <div class="footer-brand-name">ميكسات</div>
+        <p class="footer-brand-desc" data-setting="tagline">
+          كريب · كبدة · حواوشي · مكرونة
+        </p>
+      </div>
+
+      <!-- روابط سريعة -->
+      <div>
+        <div class="footer-col-title">روابط سريعة</div>
+        <div class="footer-links">
+          <a href="#best-sellers" class="footer-link"><i class="fas fa-fire"></i> الأكثر طلباً</a>
+          <a href="#menu"         class="footer-link"><i class="fas fa-utensils"></i> المنيو</a>
+          <a href="#offers"       class="footer-link"><i class="fas fa-tag"></i> العروض</a>
+          <a href="#about"        class="footer-link"><i class="fas fa-info-circle"></i> عنّا</a>
+          <a href="#reviews"      class="footer-link"><i class="fas fa-star"></i> التقييمات</a>
+        </div>
+      </div>
+
+      <!-- تواصل -->
+      <div>
+        <div class="footer-col-title">تواصل معنا</div>
+        <div class="footer-links">
+          <a href="#contact" class="footer-link"><i class="fas fa-phone"></i> <span data-setting="phone">01000000000</span></a>
+          <a href="#contact" class="footer-link"><i class="fas fa-map-marker-alt"></i> <span data-setting="address">القاهرة</span></a>
+          <a href="#" data-whatsapp class="footer-link" style="color:#25D366"><i class="fab fa-whatsapp"></i> واتساب</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- أسفل الفوتر -->
+    <div class="footer-bottom">
+      <p class="footer-copy">© 2024 <span>ميكسات</span>. جميع الحقوق محفوظة.</p>
+      <a href="admin.html" class="btn-admin-footer">
+        <i class="fas fa-cog"></i> لوحة التحكم
+      </a>
+    </div>
+  </div>
+</footer>
+
+<!-- ==========================================
+     سلة التسوق
+     ========================================== -->
+<div id="cart-overlay"></div>
+<div id="cart-sidebar">
+  <div class="cart-header">
+    <div class="cart-title">
+      <i class="fas fa-shopping-cart" style="color:var(--red)"></i>
+      طلباتك
+      <span id="cart-sidebar-count" style="font-size:.8rem;color:var(--text-400);font-weight:500">0 صنف</span>
+    </div>
+    <button class="cart-close" id="cart-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="user-email-bar" id="user-email-bar">
+    <div class="user-email-info">
+      <i class="fas fa-user-circle" style="color:var(--gold)"></i>
+      <span id="user-email-display">غير مسجل</span>
+    </div>
+    <button class="btn-change-email" onclick="promptChangeEmail()"><i class="fas fa-edit"></i> تغيير</button>
+  </div>
+  <div class="cart-body" id="cart-body">
+    <div class="cart-empty">
+      <div class="cart-empty-icon">🛒</div>
+      <p>سلة طلباتك فاضية<br><small>أضف أصناف من المنيو</small></p>
+    </div>
+  </div>
+  <div class="cart-footer" id="cart-footer" style="display:none">
+    <div class="cart-total-row">
+      <span class="cart-total-label">الإجمالي</span>
+      <span class="cart-total-val" id="cart-total">0 جنيه</span>
+    </div>
+    <button class="btn-checkout" id="btn-checkout">
+      <i class="fab fa-whatsapp fa-lg"></i>
+      متابعة الطلب عبر الواتساب
+    </button>
+  </div>
+</div>
+
+<!-- ==========================================
+     مودال تسجيل بريد العميل
+     ========================================== -->
+<div class="customer-modal-overlay" id="customer-email-modal">
+  <div class="customer-modal">
+    <div class="customer-modal-header">
+      <div class="customer-modal-title">
+        <i class="fas fa-envelope" style="color:var(--red)"></i> تسجيل البريد للطلب
+      </div>
+      <button class="customer-modal-close" onclick="closeCustomerModal('customer-email-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <form id="customer-email-form" onsubmit="handleCustomerEmailSubmit(event)">
+      <div class="customer-modal-body">
+        <p style="font-size:0.9rem;color:var(--text-300);margin-bottom:16px;line-height:1.6;">
+          مرحباً بك في <strong>ميكسات</strong>! 🍔<br>
+          يرجى أدخل إيميلك لحفظ سلة طلباتك وفصلها لضمان متابعة أسهل.
+        </p>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label" style="display:block;margin-bottom:8px;font-weight:700;">البريد الإلكتروني *</label>
+          <input type="email" class="form-input" id="input-customer-email" required placeholder="مثال: name@example.com" style="width:100%;padding:12px;border-radius:var(--r-md);background:var(--bg-3);border:1px solid var(--border-light);color:var(--text-100);" />
+        </div>
+      </div>
+      <div class="customer-modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeCustomerModal('customer-email-modal')">إلغاء</button>
+        <button type="submit" class="btn btn-red">
+          <i class="fas fa-check"></i> حفظ ومتابعة
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==========================================
+     مودال ملخص وتأكيد الطلب
+     ========================================== -->
+<div class="customer-modal-overlay" id="order-summary-modal">
+  <div class="customer-modal">
+    <div class="customer-modal-header">
+      <div class="customer-modal-title">
+        <i class="fab fa-whatsapp" style="color:#25D366"></i> تأكيد الطلب عبر الواتساب
+      </div>
+      <button class="customer-modal-close" onclick="closeCustomerModal('order-summary-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <form id="order-summary-form" onsubmit="confirmAndSendOrder(event)">
+      <div class="customer-modal-body">
+        <div class="order-summary-list" id="order-summary-items-list">
+          <!-- تتعبأ بـ JS -->
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:12px;background:var(--bg-2);border-radius:var(--r-md);font-weight:800;">
+          <span>الإجمالي الكلي:</span>
+          <span style="color:var(--gold);font-size:1.2rem;" id="order-summary-total">0 جنيه</span>
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label" style="display:block;margin-bottom:6px;font-size:0.85rem;font-weight:700;">اسمك الكريم *</label>
+          <input type="text" class="form-input" id="order-customer-name" required placeholder="مثال: أحمد محمد" style="width:100%;padding:10px;border-radius:var(--r-md);background:var(--bg-3);border:1px solid var(--border-light);color:var(--text-100);" />
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-group" style="display:block;margin-bottom:6px;font-size:0.85rem;font-weight:700;">رقم الهاتف للتواصل *</label>
+          <input type="tel" class="form-input" id="order-customer-phone" required placeholder="مثال: 01012345678" style="width:100%;padding:10px;border-radius:var(--r-md);background:var(--bg-3);border:1px solid var(--border-light);color:var(--text-100);" />
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label" style="display:block;margin-bottom:6px;font-size:0.85rem;font-weight:700;">العنوان والملاحظات</label>
+          <textarea class="form-input" id="order-customer-address" rows="2" placeholder="المنطقة، الشارع، أي ملاحظات إضافية..." style="width:100%;padding:10px;border-radius:var(--r-md);background:var(--bg-3);border:1px solid var(--border-light);color:var(--text-100);resize:none;"></textarea>
+        </div>
+      </div>
+      <div class="customer-modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeCustomerModal('order-summary-modal')">تعديل السلة</button>
+        <button type="submit" class="btn btn-red" style="background:#25D366;border-color:#25D366;">
+          <i class="fab fa-whatsapp"></i> إرسال وتأكيد الطلب
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- WhatsApp FAB -->
+<a href="#" data-whatsapp id="whatsapp-fab" title="تواصل عبر الواتساب">
+  <i class="fab fa-whatsapp"></i>
+</a>
+
+<!-- Cart FAB -->
+<button id="cart-fab" aria-label="عربة التسوق">
+  <i class="fas fa-shopping-cart"></i>
+  <span class="cart-fab-badge">0</span>
+</button>
+
+<!-- ==========================================
+     سكريبتات
+     ========================================== -->
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="js/menu-data.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
