@@ -381,8 +381,13 @@ function subscribeToLiveData({
           items = sanitizeOffers(items);
         }
 
-        // Always use what Firebase reports (empty snapshot = no items, that's valid)
+        // Always use what Firebase reports, except if menu is completely empty we show defaults
+        if (collectionName === 'menu_items' && snapshot.empty) {
+          items = DEFAULT_MENU_DATA.items;
+        }
+
         if (typeof callback === 'function') callback(items);
+        
         if (!snapshot.empty) {
           localStorage.setItem(cacheKey, JSON.stringify(items));
         } else if (collectionName !== 'offers' && collectionName !== 'menu_items') {
