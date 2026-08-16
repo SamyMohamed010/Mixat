@@ -102,31 +102,25 @@ const DataStore = {
   },
 
   async getMenuItems() {
-    let localItems = [];
-    try {
-      localItems = JSON.parse(localStorage.getItem("mixat_menu_items") || "[]");
-    } catch (e) { localItems = []; }
-    if (localItems.length === 0) localItems = DEFAULT_MENU_DATA.items;
-
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
         const snap = await withTimeout(db.collection("menu_items").get(), 4000);
         if (!snap.empty) {
+          // Firebase is the single source of truth - always use it directly
           const fsItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const itemMap = new Map();
-          localItems.forEach(i => itemMap.set(i.id, i));
-          fsItems.forEach(i => itemMap.set(i.id, i));
-          const merged = Array.from(itemMap.values());
-          localStorage.setItem("mixat_menu_items", JSON.stringify(merged));
-          return merged;
+          localStorage.setItem("mixat_menu_items", JSON.stringify(fsItems));
+          return fsItems;
         }
-
-        localStorage.setItem("mixat_menu_items", JSON.stringify(localItems));
       } catch (e) {
         console.warn("⚠️ Firestore getMenuItems fallback:", e.message);
       }
     }
-    return localItems;
+    // Fallback: localStorage then defaults
+    let localItems = [];
+    try {
+      localItems = JSON.parse(localStorage.getItem("mixat_menu_items") || "[]");
+    } catch (e) { localItems = []; }
+    return localItems.length > 0 ? localItems : DEFAULT_MENU_DATA.items;
   },
 
   async getCategories() {
@@ -152,18 +146,17 @@ const DataStore = {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
         const snap = await withTimeout(db.collection("offers").where("active", "==", true).get(), 3000);
-        if (!snap.empty) {
-          const filtered = sanitizeOffers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-          localStorage.setItem("mixat_offers", JSON.stringify(filtered));
-          return filtered;
-        }
-      } catch (e) {}
+        // Always use Firebase result (even if empty means no active offers)
+        const offers = snap.docs ? snap.docs.map(d => ({ id: d.id, ...d.data() })) : [];
+        const filtered = sanitizeOffers(offers);
+        localStorage.setItem("mixat_offers", JSON.stringify(filtered));
+        return filtered;
+      } catch (e) { console.warn("⚠️ Firestore getOffers fallback:", e.message); }
     }
 
     const stored = JSON.parse(localStorage.getItem("mixat_offers") || "null");
-    const cleaned = sanitizeOffers(Array.isArray(stored) ? stored : DEFAULT_OFFERS);
-    localStorage.setItem("mixat_offers", JSON.stringify(cleaned));
-    return cleaned;
+    // If there's no Firebase, show NO offers by default (admin must explicitly add them)
+    return sanitizeOffers(Array.isArray(stored) ? stored : []);
   },
 
   async getReviews() {
@@ -388,16 +381,17 @@ function subscribeToLiveData({
           items = sanitizeOffers(items);
         }
 
-        if (snapshot.empty) {
-          const safeExisting = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-          const fallback = Array.isArray(safeExisting) && safeExisting.length > 0 ? sanitizeOffers(safeExisting) : DEFAULT_MENU_DATA.items;
-          if (typeof callback === 'function') callback(collectionName === 'offers' ? fallback : fallback);
-          localStorage.setItem(cacheKey, JSON.stringify(collectionName === 'offers' ? sanitizeOffers(fallback) : fallback));
-          return;
-        }
-
+        // Always use what Firebase reports (empty snapshot = no items, that's valid)
         if (typeof callback === 'function') callback(items);
-        localStorage.setItem(cacheKey, JSON.stringify(items));
+        if (!snapshot.empty) {
+          localStorage.setItem(cacheKey, JSON.stringify(items));
+        } else if (collectionName !== 'offers' && collectionName !== 'menu_items') {
+          // For non-critical collections, fall back to cache
+          const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+          if (Array.isArray(cached) && cached.length > 0 && typeof callback === 'function') {
+            callback(collectionName === 'offers' ? sanitizeOffers(cached) : cached);
+          }
+        }
       },
       error => {
         console.warn(`⚠️ Firestore live sync error (${collectionName}):`, error?.message || error);

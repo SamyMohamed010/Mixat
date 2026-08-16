@@ -1056,9 +1056,39 @@ function setupAdminEvents() {
     showLoginPage();
   });
 
+  // زر الهامبرجر للموبايل
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    sidebarToggle?.classList.add('open');
+    sidebarOverlay?.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    sidebarToggle?.classList.remove('open');
+    sidebarOverlay?.classList.remove('visible');
+    document.body.style.overflow = '';
+  }
+
+  sidebarToggle?.addEventListener('click', () => {
+    if (sidebar.classList.contains('open')) closeSidebar();
+    else openSidebar();
+  });
+
+  sidebarOverlay?.addEventListener('click', closeSidebar);
+
   // روابط الشريط الجانبي
   document.querySelectorAll('.sidebar-link[data-page]').forEach(link => {
-    link.addEventListener('click', () => showPage(link.dataset.page));
+    link.addEventListener('click', () => {
+      showPage(link.dataset.page);
+      // أغلق السايدبار على الموبايل بعد الاختيار
+      if (window.innerWidth <= 900) closeSidebar();
+    });
   });
 
   // إغلاق المودال بالنقر على الخلفية

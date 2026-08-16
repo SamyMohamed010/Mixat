@@ -150,13 +150,19 @@ function renderBestSellers() {
 
 // ===== العروض =====
 function renderOffers() {
+  const section = document.getElementById('offers-section');
   const container = document.getElementById('offers-grid');
   if (!container) return;
 
   if (!state.offers || state.offers.length === 0) {
-    container.innerHTML = `<p style="color:var(--text-400);grid-column:1/-1;text-align:center">لا توجد عروض حالياً</p>`;
+    // أخفِ القسم كله لما مفيش عروض - مش تظهر رسالة وحشة
+    if (section) section.style.display = 'none';
+    container.innerHTML = '';
     return;
   }
+
+  // فيه عروض - أظهر القسم
+  if (section) section.style.display = '';
 
   container.innerHTML = state.offers.map(offer => `
     <div class="offer-card reveal">
@@ -164,8 +170,8 @@ function renderOffers() {
       <div class="offer-title">${offer.title}</div>
       <div class="offer-desc">${offer.description || ''}</div>
       <div class="offer-price-row">
-        <span class="offer-price">${offer.price} جنيه</span>
-        ${offer.oldPrice ? `<span class="offer-old-price">${offer.oldPrice} جنيه</span>` : ''}
+        <span class="offer-price">${offer.price || offer.offerPrice} جنيه</span>
+        ${offer.oldPrice || offer.originalPrice ? `<span class="offer-old-price">${offer.oldPrice || offer.originalPrice} جنيه</span>` : ''}
       </div>
       <button class="btn-offer-add" onclick="addOfferToCart('${offer.id}')">
         <i class="fas fa-cart-plus"></i> اطلب العرض
@@ -173,6 +179,7 @@ function renderOffers() {
     </div>
   `).join('');
 }
+
 
 function addOfferToCart(offerId) {
   const offer = state.offers.find(o => o.id === offerId);
@@ -286,7 +293,7 @@ function renderAbout() {
 
 // ===== التقييمات =====
 function renderReviews() {
-  const track = document.getElementById('reviews-track');
+  const track = document.getElementById('reviews-grid');
   if (!track) return;
 
   const revs = state.reviews;
@@ -309,6 +316,7 @@ function renderReviews() {
     </div>
   `).join('');
 }
+
 
 function renderStars(rating) {
   return Array.from({ length: 5 }, (_, i) =>

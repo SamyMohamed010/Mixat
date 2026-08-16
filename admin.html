@@ -109,6 +109,10 @@
   <main id="main-content">
     <!-- الشريط العلوي -->
     <div class="top-bar">
+      <!-- زر القائمة للموبايل -->
+      <button class="hamburger-btn" id="sidebar-toggle" aria-label="فتح القائمة">
+        <span></span><span></span><span></span>
+      </button>
       <div class="top-bar-title" id="top-bar-title">
         لوحة التحكم الرئيسية
       </div>
@@ -131,6 +135,9 @@
   </main>
 
 </div>
+
+<!-- طبقة التعتيم للموبايل -->
+<div id="sidebar-overlay"></div>
 
 <!-- سكريبتات -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
