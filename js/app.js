@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   showLoader();
   initFirebase();
   await loadAllData();
+  startLiveDataSync();
   if (state.userEmail) {
     state.cart = await DataStore.getUserCart(state.userEmail);
   }
@@ -55,6 +56,38 @@ async function loadAllData() {
     state.offers     = DEFAULT_OFFERS;
     state.reviews    = DEFAULT_REVIEWS;
   }
+}
+
+function startLiveDataSync() {
+  if (!IS_FIREBASE_CONFIGURED || !db) return;
+
+  subscribeToLiveData({
+    onMenuChange: items => {
+      state.items = items;
+      renderMenu();
+      renderBestSellers();
+      renderHeroStats();
+      updateCartUI();
+    },
+    onOffersChange: offers => {
+      state.offers = offers;
+      renderOffers();
+    },
+    onSettingsChange: settings => {
+      state.settings = settings || DEFAULT_SETTINGS;
+      applySettings();
+      renderAbout();
+    },
+    onCategoriesChange: categories => {
+      state.categories = categories || DEFAULT_MENU_DATA.categories;
+      renderMenuTabs();
+      renderMenu();
+    },
+    onReviewsChange: reviews => {
+      state.reviews = reviews;
+      renderReviews();
+    },
+  });
 }
 
 // ===== رسم كل الأقسام =====

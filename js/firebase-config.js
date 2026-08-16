@@ -311,3 +311,68 @@ const DataStore = {
     return localStorage.getItem("mixat_admin_logged") === "true";
   },
 };
+
+function subscribeToLiveData({
+  onMenuChange,
+  onOffersChange,
+  onSettingsChange,
+  onCategoriesChange,
+  onReviewsChange,
+} = {}) {
+  if (!IS_FIREBASE_CONFIGURED || !db) return () => {};
+
+  const unsubscribers = [];
+
+  const watchCollection = (collectionName, callback, queryFn) => {
+    let ref = db.collection(collectionName);
+    if (typeof queryFn === 'function') ref = queryFn(ref);
+
+    const unsubscribe = ref.onSnapshot(
+      snapshot => {
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        if (typeof callback === 'function') callback(items);
+        const cacheKey = {
+          menu_items: 'mixat_menu_items',
+          offers: 'mixat_offers',
+          reviews: 'mixat_reviews',
+        }[collectionName] || `mixat_${collectionName}`;
+        localStorage.setItem(cacheKey, JSON.stringify(items));
+      },
+      error => {
+        console.warn(`⚠️ Firestore live sync error (${collectionName}):`, error?.message || error);
+      }
+    );
+
+    unsubscribers.push(unsubscribe);
+  };
+
+  watchCollection('menu_items', onMenuChange);
+  watchCollection('offers', onOffersChange, ref => ref.where('active', '==', true));
+  watchCollection('reviews', onReviewsChange, ref => ref.where('approved', '==', true));
+
+  const unsubSettings = db.doc('settings/general').onSnapshot(
+    doc => {
+      const settings = doc.exists ? doc.data() : DEFAULT_SETTINGS;
+      localStorage.setItem('mixat_settings', JSON.stringify(settings));
+      if (typeof onSettingsChange === 'function') onSettingsChange(settings);
+    },
+    error => {
+      console.warn('⚠️ Firestore live sync error (settings/general):', error?.message || error);
+    }
+  );
+
+  const unsubCategories = db.doc('settings/categories').onSnapshot(
+    doc => {
+      const categories = doc.exists && Array.isArray(doc.data().list) ? doc.data().list : DEFAULT_MENU_DATA.categories;
+      localStorage.setItem('mixat_categories', JSON.stringify(categories));
+      if (typeof onCategoriesChange === 'function') onCategoriesChange(categories);
+    },
+    error => {
+      console.warn('⚠️ Firestore live sync error (settings/categories):', error?.message || error);
+    }
+  );
+
+  unsubscribers.push(unsubSettings, unsubCategories);
+
+  return () => unsubscribers.forEach(fn => fn && fn());
+}
