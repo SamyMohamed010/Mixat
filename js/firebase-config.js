@@ -61,6 +61,34 @@ function withTimeout(promise, ms = 4000) {
 // ==========================================
 // طبقة البيانات - تعمل مع Firebase أو localStorage
 // ==========================================
+function normalizeCategories(categories) {
+  const defaults = DEFAULT_MENU_DATA.categories || [];
+  const defaultMap = new Map(defaults.map(cat => [cat.id, cat]));
+
+  return (Array.isArray(categories) ? categories : []).map(cat => {
+    const defaultCat = defaultMap.get(cat.id) || defaultMap.get(cat.slug) || {};
+    return {
+      ...defaultCat,
+      ...cat,
+      image: cat.image || defaultCat.image || null,
+      icon: cat.icon || defaultCat.icon || '🍽️',
+      name: cat.name || defaultCat.name || 'غير مسمى',
+    };
+  });
+}
+
+function sanitizeOffers(offers) {
+  const legacyIds = new Set(['o1', 'o2']);
+  const legacyTitles = new Set(['عرض الترحيب', 'وجبة الشيخ']);
+
+  return (Array.isArray(offers) ? offers : []).filter(offer => {
+    if (!offer) return false;
+    const idOk = !legacyIds.has(String(offer.id));
+    const titleOk = !legacyTitles.has(String(offer.title || '').trim());
+    return idOk && titleOk;
+  });
+}
+
 const DataStore = {
   // --------- قراءة ---------
   async getSettings() {
@@ -85,7 +113,6 @@ const DataStore = {
         const snap = await withTimeout(db.collection("menu_items").get(), 4000);
         if (!snap.empty) {
           const fsItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          // Merge default items with firestore items so default items exist alongside custom edited items
           const itemMap = new Map();
           localItems.forEach(i => itemMap.set(i.id, i));
           fsItems.forEach(i => itemMap.set(i.id, i));
@@ -93,6 +120,8 @@ const DataStore = {
           localStorage.setItem("mixat_menu_items", JSON.stringify(merged));
           return merged;
         }
+
+        localStorage.setItem("mixat_menu_items", JSON.stringify(localItems));
       } catch (e) {
         console.warn("⚠️ Firestore getMenuItems fallback:", e.message);
       }
@@ -104,20 +133,37 @@ const DataStore = {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
         const doc = await withTimeout(db.collection("settings").doc("categories").get(), 3000);
-        if (doc.exists && doc.data().list) return doc.data().list;
+        if (doc.exists && Array.isArray(doc.data().list)) {
+          const normalized = normalizeCategories(doc.data().list);
+          localStorage.setItem("mixat_categories", JSON.stringify(normalized));
+          return normalized;
+        }
       } catch (e) {}
     }
-    return JSON.parse(localStorage.getItem("mixat_categories") || JSON.stringify(DEFAULT_MENU_DATA.categories));
+
+    const stored = JSON.parse(localStorage.getItem("mixat_categories") || "null");
+    const categories = Array.isArray(stored) && stored.length ? stored : DEFAULT_MENU_DATA.categories;
+    const normalized = normalizeCategories(categories);
+    localStorage.setItem("mixat_categories", JSON.stringify(normalized));
+    return normalized;
   },
 
   async getOffers() {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
         const snap = await withTimeout(db.collection("offers").where("active", "==", true).get(), 3000);
-        if (!snap.empty) return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!snap.empty) {
+          const filtered = sanitizeOffers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          localStorage.setItem("mixat_offers", JSON.stringify(filtered));
+          return filtered;
+        }
       } catch (e) {}
     }
-    return JSON.parse(localStorage.getItem("mixat_offers") || JSON.stringify(DEFAULT_OFFERS));
+
+    const stored = JSON.parse(localStorage.getItem("mixat_offers") || "null");
+    const cleaned = sanitizeOffers(Array.isArray(stored) ? stored : DEFAULT_OFFERS);
+    localStorage.setItem("mixat_offers", JSON.stringify(cleaned));
+    return cleaned;
   },
 
   async getReviews() {
@@ -281,10 +327,12 @@ const DataStore = {
   },
 
   async saveCategories(categories) {
+    const normalized = normalizeCategories(categories);
     if (IS_FIREBASE_CONFIGURED && db) {
-      await db.collection("settings").doc("categories").set({ list: categories });
+      await db.collection("settings").doc("categories").set({ list: normalized });
     }
-    localStorage.setItem("mixat_categories", JSON.stringify(categories));
+    localStorage.setItem("mixat_categories", JSON.stringify(normalized));
+    return normalized;
   },
 
   // --------- أدمن Auth ---------
@@ -329,13 +377,26 @@ function subscribeToLiveData({
 
     const unsubscribe = ref.onSnapshot(
       snapshot => {
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        if (typeof callback === 'function') callback(items);
+        let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const cacheKey = {
           menu_items: 'mixat_menu_items',
           offers: 'mixat_offers',
           reviews: 'mixat_reviews',
         }[collectionName] || `mixat_${collectionName}`;
+
+        if (collectionName === 'offers') {
+          items = sanitizeOffers(items);
+        }
+
+        if (snapshot.empty) {
+          const safeExisting = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+          const fallback = Array.isArray(safeExisting) && safeExisting.length > 0 ? sanitizeOffers(safeExisting) : DEFAULT_MENU_DATA.items;
+          if (typeof callback === 'function') callback(collectionName === 'offers' ? fallback : fallback);
+          localStorage.setItem(cacheKey, JSON.stringify(collectionName === 'offers' ? sanitizeOffers(fallback) : fallback));
+          return;
+        }
+
+        if (typeof callback === 'function') callback(items);
         localStorage.setItem(cacheKey, JSON.stringify(items));
       },
       error => {

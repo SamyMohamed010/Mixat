@@ -107,7 +107,5 @@ const DEFAULT_SETTINGS = {
 };
 
 // عروض افتراضية
-const DEFAULT_OFFERS = [
-  { id: 'o1', title: 'عرض الترحيب', description: 'كريب ميكسات + مكرونة بالشاورما', originalPrice: 125, offerPrice: 99, validUntil: '2024-12-31', active: true },
-  { id: 'o2', title: 'وجبة الشيخ', description: 'ميكسات الشيخ + بطاطس + مشروب', originalPrice: 115, offerPrice: 89, validUntil: '2024-12-31', active: true },
-];
+// تم إيقافها بشكل افتراضي، وسيتم إضافة العروض فقط من صفحة الإدارة
+const DEFAULT_OFFERS = [];
