@@ -258,7 +258,8 @@ function renderMenu() {
 // ===== بناء بطاقة الطعام =====
 function renderFoodCard(item) {
   const cat = state.categories.find(c => c.id === item.category);
-  const inCart = state.cart.some(c => c.id === item.id);
+  const hasSizes = Array.isArray(item.sizes) && item.sizes.length > 1;
+  const inCart = state.cart.some(c => c.id === item.id || c.id.startsWith(item.id + '_'));
 
   const imgHTML = item.image
     ? `<img src="${item.image}" alt="${item.name}" loading="lazy" />`
@@ -266,20 +267,34 @@ function renderFoodCard(item) {
       ? `<img src="${cat.image}" alt="${item.name}" loading="lazy" />`
       : `<div class="food-card-emoji">${cat ? cat.icon : '🍽️'}</div>`);
 
+  // عرض السعر - لو فيه أحجام اعرض "من X جنيه"
+  const priceDisplay = hasSizes
+    ? `<div class="food-card-price"><span class="price-from">من</span> ${Math.min(...item.sizes.map(s => s.price))} <span>جنيه</span></div>`
+    : `<div class="food-card-price">${item.price} <span>جنيه</span></div>`;
+
+  // زر الإضافة - لو فيه أحجام يفتح modal الحجم
+  const addBtn = hasSizes
+    ? `<button class="btn-add-cart" data-id="${item.id}" onclick="openSizeModal('${item.id}')">
+         <i class="fas fa-expand-arrows-alt"></i> اختار الحجم
+       </button>`
+    : `<button class="btn-add-cart ${inCart ? 'added' : ''}" data-id="${item.id}" onclick="addToCart('${item.id}')">
+         ${inCart ? '<i class="fas fa-check"></i> أضيف' : '<i class="fas fa-plus"></i> أضف'}
+       </button>`;
+
   return `
     <div class="food-card reveal" data-category="${item.category}">
       <div class="food-card-img">
         ${imgHTML}
         ${item.bestSeller ? '<span class="food-card-badge">⭐ الأكثر طلباً</span>' : ''}
+        ${hasSizes ? '<span class="food-card-sizes-badge">📏 أحجام</span>' : ''}
       </div>
       <div class="food-card-body">
         <h3 class="food-card-title">${item.name}</h3>
         <p class="food-card-desc">${item.description || ''}</p>
+        ${hasSizes ? `<div class="food-card-sizes-preview">${item.sizes.map(s => `<span class="size-chip">${s.name} ${s.price}ج</span>`).join('')}</div>` : ''}
         <div class="food-card-footer">
-          <div class="food-card-price">${item.price} <span>جنيه</span></div>
-          <button class="btn-add-cart ${inCart ? 'added' : ''}" data-id="${item.id}" onclick="addToCart('${item.id}')">
-            ${inCart ? '<i class="fas fa-check"></i> أضيف' : '<i class="fas fa-plus"></i> أضف'}
-          </button>
+          ${priceDisplay}
+          ${addBtn}
         </div>
       </div>
     </div>`;
@@ -350,6 +365,81 @@ function renderFooter() {
 // ==========================================
 // سلة التسوق وإدارة الإيميل
 // ==========================================
+// ===== مودال اختيار الحجم =====
+function openSizeModal(itemId) {
+  if (!state.userEmail) {
+    state.pendingItemId = 'size_' + itemId;
+    openCustomerModal('customer-email-modal');
+    return;
+  }
+  const item = state.items.find(i => i.id === itemId);
+  if (!item || !item.sizes) return;
+
+  // احذف أي مودال قديم
+  const old = document.getElementById('size-modal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'size-modal';
+  modal.className = 'size-modal-overlay';
+  modal.innerHTML = `
+    <div class="size-modal">
+      <div class="size-modal-header">
+        <div class="size-modal-title">📏 اختار الحجم</div>
+        <button class="size-modal-close" onclick="closeSizeModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="size-modal-item-name">${item.name}</div>
+      <div class="size-modal-options">
+        ${item.sizes.map(size => `
+          <button class="size-option-btn" onclick="addToCartWithSize('${item.id}', '${size.name}', ${size.price})">
+            <span class="size-option-name">${size.name}</span>
+            <span class="size-option-price">${size.price} جنيه</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  modal.addEventListener('click', e => { if (e.target === modal) closeSizeModal(); });
+  document.body.appendChild(modal);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => modal.classList.add('open'));
+}
+
+function closeSizeModal() {
+  const modal = document.getElementById('size-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    setTimeout(() => { modal.remove(); document.body.style.overflow = ''; }, 250);
+  }
+}
+
+function addToCartWithSize(itemId, sizeName, sizePrice) {
+  const item = state.items.find(i => i.id === itemId);
+  if (!item) return;
+
+  const cartId = `${itemId}_${sizeName}`;
+  const cat = state.categories.find(c => c.id === item.category);
+  const existing = state.cart.find(c => c.id === cartId);
+
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    state.cart.push({
+      id: cartId,
+      name: `${item.name} (${sizeName})`,
+      price: sizePrice,
+      icon: cat ? cat.icon : '🍽️',
+      image: item.image,
+      qty: 1,
+    });
+  }
+
+  closeSizeModal();
+  saveCart();
+  updateCartUI();
+  showToast(`✅ تم إضافة ${item.name} (${sizeName}) للطلب`);
+}
+
 function addToCart(itemId) {
   if (!state.userEmail) {
     state.pendingItemId = itemId;
@@ -359,6 +449,12 @@ function addToCart(itemId) {
 
   const item = state.items.find(i => i.id === itemId);
   if (!item) return;
+
+  // لو فيه أحجام، افتح مودال الأحجام
+  if (Array.isArray(item.sizes) && item.sizes.length > 1) {
+    openSizeModal(itemId);
+    return;
+  }
 
   const existing = state.cart.find(c => c.id === itemId);
   if (existing) {
@@ -520,10 +616,13 @@ async function handleCustomerEmailSubmit(e) {
     state.pendingItemId = null;
     if (pid.startsWith('offer_')) {
       addOfferToCart(pid.replace('offer_', ''));
+    } else if (pid.startsWith('size_')) {
+      openSizeModal(pid.replace('size_', ''));
     } else {
       addToCart(pid);
     }
   }
+
 }
 
 // ===== طلب واتساب مع تأكيد ملخص الطلب =====

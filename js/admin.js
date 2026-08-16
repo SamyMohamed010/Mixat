@@ -303,16 +303,37 @@ function renderItemModal(itemId) {
             ${item && item.image ? `<img src="${item.image}" alt="Preview" style="max-width:80px;border-radius:8px;margin-top:8px;">` : ''}
           </div>
           <div class="form-row">
+            <div class="form-group" style="flex:1">
+              <label class="form-label">نوع السعر *</label>
+              <select class="form-input" id="item-price-type" onchange="document.getElementById('single-price-group').style.display=this.value==='single'?'flex':'none'; document.getElementById('sizes-price-group').style.display=this.value==='sizes'?'flex':'none';">
+                <option value="single" ${!item || !item.sizes ? 'selected' : ''}>سعر واحد ثابت</option>
+                <option value="sizes" ${item && item.sizes ? 'selected' : ''}>أحجام (صغير / كبير)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row" id="single-price-group" style="${item && item.sizes ? 'display:none' : 'display:flex'}">
             <div class="form-group">
               <label class="form-label">السعر (جنيه) *</label>
-              <input type="number" class="form-input" id="item-price" value="${item ? item.price : ''}" min="1" required placeholder="مثال: 50" />
+              <input type="number" class="form-input" id="item-price" value="${item && !item.sizes ? item.price : ''}" min="1" placeholder="مثال: 50" />
             </div>
-            <div class="form-group" style="justify-content:flex-end;gap:12px">
-              <label class="form-check">
+          </div>
+          <div class="form-row" id="sizes-price-group" style="${item && item.sizes ? 'display:flex' : 'display:none'}">
+            <div class="form-group">
+              <label class="form-label">سعر الصغير (جنيه)</label>
+              <input type="number" class="form-input" id="item-price-small" value="${item && item.sizes ? (item.sizes.find(s=>s.name==='صغير')?.price || '') : ''}" min="1" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">سعر الكبير (جنيه)</label>
+              <input type="number" class="form-input" id="item-price-large" value="${item && item.sizes ? (item.sizes.find(s=>s.name==='كبير')?.price || '') : ''}" min="1" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="justify-content:flex-end;gap:12px;flex-direction:row">
+              <label class="form-check" style="flex-direction:row-reverse">
                 <input type="checkbox" id="item-available" ${!item || item.available ? 'checked' : ''} />
                 متاح للطلب
               </label>
-              <label class="form-check">
+              <label class="form-check" style="flex-direction:row-reverse">
                 <input type="checkbox" id="item-best" ${item && item.bestSeller ? 'checked' : ''} />
                 ⭐ الأكثر طلباً
               </label>
@@ -769,12 +790,30 @@ async function saveItem(e) {
       console.log('✅ تم رفع الصورة:', imageUrl ? imageUrl.substring(0, 60) + '...' : 'فشل');
     }
 
+    const priceType = document.getElementById('item-price-type').value;
+    let price = null;
+    let sizes = null;
+
+    if (priceType === 'single') {
+      price = parseInt(document.getElementById('item-price').value) || 0;
+    } else {
+      sizes = [];
+      const sp = parseInt(document.getElementById('item-price-small').value);
+      const lp = parseInt(document.getElementById('item-price-large').value);
+      if (!isNaN(sp) && sp > 0) sizes.push({ name: 'صغير', price: sp });
+      if (!isNaN(lp) && lp > 0) sizes.push({ name: 'كبير', price: lp });
+      
+      if (sizes.length === 0) sizes = null;
+      else price = sizes[0].price; // fallback price for older clients or sorting
+    }
+
     const item = {
       id:          id || 'new_' + Date.now(),
       name:        document.getElementById('item-name').value.trim(),
       category:    document.getElementById('item-category').value,
       description: document.getElementById('item-desc').value.trim(),
-      price:       parseInt(document.getElementById('item-price').value),
+      price:       price,
+      sizes:       sizes, // If null, it overrides any existing array in merge
       available:   document.getElementById('item-available').checked,
       bestSeller:  document.getElementById('item-best').checked,
     };
