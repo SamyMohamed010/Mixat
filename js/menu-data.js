@@ -36,20 +36,21 @@ const DEFAULT_MENU_DATA = {
     { id: 'h5',  category: 'hawashi',  name: 'حواوشي سجق مدخن',     price: 45, description: 'حواوشي بسجق مدخن بنكهة مميزة', available: true, bestSeller: false },
 
     // ===== التيك اواي =====
-    { id: 't1',  category: 'takeaway', name: 'كبدة',                  price: 30, description: 'كبدة مشوية على الفحم بالتوابل', available: true, bestSeller: false },
-    { id: 't2',  category: 'takeaway', name: 'سجق',                   price: 30, description: 'سجق مشوي طازج', available: true, bestSeller: false },
-    { id: 't3',  category: 'takeaway', name: 'سجق مدخن',             price: 35, description: 'سجق مدخن بنكهة مميزة', available: true, bestSeller: false },
-    { id: 't4',  category: 'takeaway', name: 'بانية فريش',            price: 40, description: 'فيليه فراخ فريش مقلي مقرمش', available: true, bestSeller: true },
-    { id: 't5',  category: 'takeaway', name: 'استريس',                price: 35, description: 'صدر فراخ مشوي مع صوص استريس', available: true, bestSeller: false },
-    { id: 't6',  category: 'takeaway', name: 'كفتة',                  price: 40, description: 'كفتة لحمة مشوية على الفحم', available: true, bestSeller: false },
-    { id: 't7',  category: 'takeaway', name: 'هوت دوج',               price: 35, description: 'هوت دوج مشوي مع خبز طري', available: true, bestSeller: false },
-    { id: 't8',  category: 'takeaway', name: 'برجر',                  price: 50, description: 'باتي برجر لحم مع خس وطماطم وصوص', available: true, bestSeller: false },
-    { id: 't9',  category: 'takeaway', name: 'برجر بيض',              price: 55, description: 'برجر لحم مع بيضة مقلية', available: true, bestSeller: false },
-    { id: 't10', category: 'takeaway', name: 'برجر جبنة',             price: 55, description: 'برجر لحم مع جبنة شيدر', available: true, bestSeller: true },
-    { id: 't11', category: 'takeaway', name: 'برجر فراخ',             price: 50, description: 'باتي فراخ مع خس وطماطم وصوص', available: true, bestSeller: false },
-    { id: 't12', category: 'takeaway', name: 'برجر جامبو',            price: 65, description: 'برجر ضخم بباتي مزدوج مع جبنة وبيض', available: true, bestSeller: false },
-    { id: 't13', category: 'takeaway', name: 'شاورما',                price: 50, description: 'شاورما فراخ بصوص الثوم والخضروات', available: true, bestSeller: false },
-    { id: 't14', category: 'takeaway', name: 'بطاطس',                 price: 25, description: 'بطاطس مقلية طازجة مقرمشة', available: true, bestSeller: false },
+    { id: 't1',  category: 'takeaway', name: 'كبدة',                  price: 10, sizes: [{name: 'صغير', price: 10}, {name: 'كبير', price: 15}], description: 'كبدة مشوية على الفحم بالتوابل', available: true, bestSeller: false },
+    { id: 't2',  category: 'takeaway', name: 'سجق',                   price: 10, sizes: [{name: 'صغير', price: 10}, {name: 'كبير', price: 15}], description: 'سجق مشوي طازج', available: true, bestSeller: false },
+    { id: 't3',  category: 'takeaway', name: 'سجق مدخن',             price: 10, sizes: [{name: 'صغير', price: 10}, {name: 'كبير', price: 15}], description: 'سجق مدخن بنكهة مميزة', available: true, bestSeller: false },
+    { id: 't4',  category: 'takeaway', name: 'بانية فريش',            price: 15, sizes: [{name: 'صغير', price: 15}, {name: 'كبير', price: 20}], description: 'فيليه فراخ فريش مقلي مقرمش', available: true, bestSeller: true },
+    { id: 't5',  category: 'takeaway', name: 'استريس',                price: 15, sizes: [{name: 'صغير', price: 15}, {name: 'كبير', price: 20}], description: 'صدر فراخ مشوي مع صوص استريس', available: true, bestSeller: false },
+    { id: 't6',  category: 'takeaway', name: 'كفتة',                  price: 10, sizes: [{name: 'صغير', price: 10}, {name: 'كبير', price: 15}], description: 'كفتة لحمة مشوية على الفحم', available: true, bestSeller: false },
+    { id: 't7',  category: 'takeaway', name: 'هوت دوج',               price: 15, sizes: [{name: 'صغير', price: 15}, {name: 'كبير', price: 20}], description: 'هوت دوج مشوي مع خبز طري', available: true, bestSeller: false },
+    { id: 't8',  category: 'takeaway', name: 'برجر',                  price: 15, sizes: [{name: 'صغير', price: 15}, {name: 'كبير', price: 20}], description: 'باتي برجر لحم مع خس وطماطم وصوص', available: true, bestSeller: false },
+    { id: 't9',  category: 'takeaway', name: 'برجر بيض',              price: 20, description: 'برجر لحم مع بيضة مقلية', available: true, bestSeller: false },
+    { id: 't10', category: 'takeaway', name: 'برجر جبنة',             price: 20, description: 'برجر لحم مع جبنة شيدر', available: true, bestSeller: true },
+    { id: 't11', category: 'takeaway', name: 'برجر فراخ',             price: 15, description: 'باتي فراخ مع خس وطماطم وصوص', available: true, bestSeller: false },
+    { id: 't12', category: 'takeaway', name: 'برجر جامبو',            price: 20, sizes: [{name: 'صغير', price: 20}, {name: 'كبير', price: 25}], description: 'برجر ضخم بباتي مزدوج مع جبنة وبيض', available: true, bestSeller: false },
+    { id: 't13', category: 'takeaway', name: 'شاورما',                price: 15, sizes: [{name: 'صغير', price: 15}, {name: 'كبير', price: 20}], description: 'شاورما فراخ بصوص الثوم والخضروات', available: true, bestSeller: false },
+    { id: 't14', category: 'takeaway', name: 'بطاطس',                 price: 10, sizes: [{name: 'صغير', price: 10}, {name: 'كبير', price: 15}], description: 'بطاطس مقلية طازجة مقرمشة', available: true, bestSeller: false },
+    { id: 't15', category: 'takeaway', name: 'برجر بيض + جبنة',       price: 25, description: 'برجر لحم مع بيض وجبنة', available: true, bestSeller: false },
 
     // ===== الأرز =====
     { id: 'r1',  category: 'rice',     name: 'أرز + كبدة',            price: 45, description: 'أرز ابيض مع كبدة مشوية', available: true, bestSeller: false },
@@ -74,14 +75,14 @@ const DEFAULT_MENU_DATA = {
     { id: 'm9',  category: 'mixat',    name: 'ميكسات ميكسات',         price: 95, description: 'الخلطة الأسطورية - كل حاجة في حاجة واحدة', available: true, bestSeller: true },
 
     // ===== المكرونات =====
-    { id: 'p1',  category: 'pasta',    name: 'مكرونة + كفتة',         price: 50, description: 'مكرونة مع كفتة لحمة بصوص البشاميل', available: true, bestSeller: false },
-    { id: 'p2',  category: 'pasta',    name: 'مكرونة + شاورما',       price: 60, description: 'مكرونة مع شاورما فراخ بصوص الكريمة', available: true, bestSeller: true },
-    { id: 'p3',  category: 'pasta',    name: 'مكرونة + بانية فريش',  price: 55, description: 'مكرونة مع بانية فريش بصوص ميكسات', available: true, bestSeller: false },
-    { id: 'p4',  category: 'pasta',    name: 'مكرونة + كبدة',         price: 50, description: 'مكرونة مع كبدة مشوية بصوص الطماطم', available: true, bestSeller: false },
-    { id: 'p5',  category: 'pasta',    name: 'مكرونة + سجق مدخن',   price: 55, description: 'مكرونة مع سجق مدخن بصوص الكريمة', available: true, bestSeller: false },
-    { id: 'p6',  category: 'pasta',    name: 'مكرونة + سجق عادي',   price: 50, description: 'مكرونة مع سجق مشوي بصوص الطماطم', available: true, bestSeller: false },
-    { id: 'p7',  category: 'pasta',    name: 'مكرونة + ميكسات',      price: 70, description: 'مكرونة مع الخلطة الخاصة بميكسات', available: true, bestSeller: false },
-    { id: 'p8',  category: 'pasta',    name: 'مكرونة + فراخ',         price: 60, description: 'مكرونة مع فراخ مشوية بصوص الكريمة', available: true, bestSeller: false },
+    { id: 'p1',  category: 'pasta',    name: 'مكرونة + كفتة',         price: 45, sizes: [{name: 'صغير', price: 45}, {name: 'كبير', price: 65}], description: 'مكرونة مع كفتة لحمة بصوص البشاميل', available: true, bestSeller: false },
+    { id: 'p2',  category: 'pasta',    name: 'مكرونة + شاورما',       price: 45, sizes: [{name: 'صغير', price: 45}, {name: 'كبير', price: 65}], description: 'مكرونة مع شاورما فراخ بصوص الكريمة', available: true, bestSeller: true },
+    { id: 'p3',  category: 'pasta',    name: 'مكرونة + بانية فريش',  price: 45, sizes: [{name: 'صغير', price: 45}, {name: 'كبير', price: 65}], description: 'مكرونة مع بانية فريش بصوص ميكسات', available: true, bestSeller: false },
+    { id: 'p4',  category: 'pasta',    name: 'مكرونة + كبدة',         price: 35, sizes: [{name: 'صغير', price: 35}, {name: 'كبير', price: 50}], description: 'مكرونة مع كبدة مشوية بصوص الطماطم', available: true, bestSeller: false },
+    { id: 'p5',  category: 'pasta',    name: 'مكرونة + سجق مدخن',   price: 40, sizes: [{name: 'صغير', price: 40}, {name: 'كبير', price: 55}], description: 'مكرونة مع سجق مدخن بصوص الكريمة', available: true, bestSeller: false },
+    { id: 'p6',  category: 'pasta',    name: 'مكرونة + سجق عادي',   price: 35, sizes: [{name: 'صغير', price: 35}, {name: 'كبير', price: 50}], description: 'مكرونة مع سجق مشوي بصوص الطماطم', available: true, bestSeller: false },
+    { id: 'p7',  category: 'pasta',    name: 'مكرونة + ميكس لحمة',      price: 70, description: 'مكرونة مع الخلطة الخاصة بميكسات', available: true, bestSeller: false },
+    { id: 'p8',  category: 'pasta',    name: 'مكرونة + ميكس فراخ',         price: 65, description: 'مكرونة مع فراخ مشوية بصوص الكريمة', available: true, bestSeller: false },
   ]
 };
 
