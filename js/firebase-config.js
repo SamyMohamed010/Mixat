@@ -96,7 +96,9 @@ const DataStore = {
       try {
         const doc = await withTimeout(db.collection("settings").doc("general").get(), 3000);
         if (doc.exists) return doc.data();
-      } catch (e) {}
+      } catch (e) {
+        console.warn('⚠️ Firestore getSettings fallback:', e.message);
+      }
     }
     return JSON.parse(localStorage.getItem("mixat_settings") || JSON.stringify(DEFAULT_SETTINGS));
   },
@@ -173,8 +175,12 @@ const DataStore = {
   async saveSettings(data) {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        await withTimeout(db.collection("settings").doc("general").set(data, { merge: true }), 4000);
-      } catch (e) {}
+        await withTimeout(db.collection("settings").doc("general").set(data, { merge: true }), 6000);
+        console.log('✅ Settings saved to Firestore');
+      } catch (e) {
+        console.error('❌ Firestore saveSettings FAILED:', e.message);
+        throw new Error('فشل حفظ الإعدادات على السيرفر: ' + e.message);
+      }
     }
     localStorage.setItem("mixat_settings", JSON.stringify(data));
   },
@@ -185,14 +191,16 @@ const DataStore = {
       try {
         const { id, ...rest } = item;
         if (!id || id.startsWith("new_")) {
-          const ref = await withTimeout(db.collection("menu_items").add(rest), 4000);
+          const ref = await withTimeout(db.collection("menu_items").add(rest), 6000);
           savedId = ref.id;
         } else {
-          await withTimeout(db.collection("menu_items").doc(id).set(rest, { merge: true }), 4000);
+          await withTimeout(db.collection("menu_items").doc(id).set(rest, { merge: true }), 6000);
           savedId = id;
         }
+        console.log('✅ Menu item saved to Firestore:', savedId);
       } catch (e) {
-        console.warn("⚠️ Firestore saveMenuItem timeout/error, saved locally:", e.message);
+        console.error('❌ Firestore saveMenuItem FAILED:', e.message, e);
+        throw new Error('فشل حفظ الصنف على السيرفر: ' + e.message);
       }
     }
     // Sync with localStorage
@@ -213,8 +221,12 @@ const DataStore = {
   async deleteMenuItem(id) {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        await withTimeout(db.collection("menu_items").doc(id).delete(), 4000);
-      } catch (e) {}
+        await withTimeout(db.collection("menu_items").doc(id).delete(), 6000);
+        console.log('✅ Menu item deleted from Firestore:', id);
+      } catch (e) {
+        console.error('❌ Firestore deleteMenuItem FAILED:', e.message);
+        throw new Error('فشل حذف الصنف من السيرفر: ' + e.message);
+      }
     }
     let items = [];
     try {
@@ -266,11 +278,18 @@ const DataStore = {
 
   async saveOffer(offer) {
     if (IS_FIREBASE_CONFIGURED && db) {
-      const { id, ...rest } = offer;
-      if (id && id.startsWith("new_")) {
-        await db.collection("offers").add(rest);
-      } else {
-        await db.collection("offers").doc(id).set(rest, { merge: true });
+      try {
+        const { id, ...rest } = offer;
+        if (id && id.startsWith("new_")) {
+          const ref = await withTimeout(db.collection("offers").add(rest), 6000);
+          offer.id = ref.id;
+        } else {
+          await withTimeout(db.collection("offers").doc(id).set(rest, { merge: true }), 6000);
+        }
+        console.log('✅ Offer saved to Firestore:', offer.id);
+      } catch (e) {
+        console.error('❌ Firestore saveOffer FAILED:', e.message);
+        throw new Error('فشل حفظ العرض على السيرفر: ' + e.message);
       }
     } else {
       const offers = await DataStore.getOffers();
@@ -283,7 +302,13 @@ const DataStore = {
 
   async deleteOffer(id) {
     if (IS_FIREBASE_CONFIGURED && db) {
-      await db.collection("offers").doc(id).delete();
+      try {
+        await withTimeout(db.collection("offers").doc(id).delete(), 6000);
+        console.log('✅ Offer deleted from Firestore:', id);
+      } catch (e) {
+        console.error('❌ Firestore deleteOffer FAILED:', e.message);
+        throw new Error('فشل حذف العرض من السيرفر: ' + e.message);
+      }
     } else {
       const offers = (await DataStore.getOffers()).filter(o => o.id !== id);
       localStorage.setItem("mixat_offers", JSON.stringify(offers));
@@ -322,7 +347,13 @@ const DataStore = {
   async saveCategories(categories) {
     const normalized = normalizeCategories(categories);
     if (IS_FIREBASE_CONFIGURED && db) {
-      await db.collection("settings").doc("categories").set({ list: normalized });
+      try {
+        await withTimeout(db.collection("settings").doc("categories").set({ list: normalized }), 6000);
+        console.log('✅ Categories saved to Firestore');
+      } catch (e) {
+        console.error('❌ Firestore saveCategories FAILED:', e.message);
+        throw new Error('فشل حفظ الفئات على السيرفر: ' + e.message);
+      }
     }
     localStorage.setItem("mixat_categories", JSON.stringify(normalized));
     return normalized;
@@ -435,4 +466,55 @@ function subscribeToLiveData({
   unsubscribers.push(unsubSettings, unsubCategories);
 
   return () => unsubscribers.forEach(fn => fn && fn());
+}
+
+// ==========================================
+// رفع البيانات الافتراضية لـ Firestore (Seed)
+// يُستخدم مرة واحدة لملء قاعدة البيانات الفاضية
+// ==========================================
+async function seedFirestore() {
+  if (!IS_FIREBASE_CONFIGURED || !db) {
+    throw new Error('Firebase مش متصل!');
+  }
+  if (!auth || !auth.currentUser) {
+    throw new Error('لازم تسجل دخول كأدمن الأول!');
+  }
+
+  const results = { items: 0, categories: false, settings: false, reviews: 0 };
+
+  // 1. رفع أصناف المنيو
+  console.log('📦 جاري رفع أصناف المنيو...');
+  const menuItems = DEFAULT_MENU_DATA.items;
+  for (const item of menuItems) {
+    const { id, ...rest } = item;
+    // نستخدم نفس الـ ID عشان نقدر نرجعله بعدين
+    await db.collection('menu_items').doc(id).set(rest);
+    results.items++;
+  }
+  console.log(`✅ تم رفع ${results.items} صنف`);
+
+  // 2. رفع الفئات
+  console.log('📦 جاري رفع الفئات...');
+  const categories = DEFAULT_MENU_DATA.categories;
+  await db.collection('settings').doc('categories').set({ list: categories });
+  results.categories = true;
+  console.log('✅ تم رفع الفئات');
+
+  // 3. رفع الإعدادات
+  console.log('📦 جاري رفع الإعدادات...');
+  await db.collection('settings').doc('general').set(DEFAULT_SETTINGS);
+  results.settings = true;
+  console.log('✅ تم رفع الإعدادات');
+
+  // 4. رفع التقييمات الافتراضية
+  console.log('📦 جاري رفع التقييمات...');
+  for (const review of DEFAULT_REVIEWS) {
+    const { id, ...rest } = review;
+    await db.collection('reviews').doc(id).set(rest);
+    results.reviews++;
+  }
+  console.log(`✅ تم رفع ${results.reviews} تقييم`);
+
+  console.log('🎉 تم ملء قاعدة البيانات بنجاح!', results);
+  return results;
 }

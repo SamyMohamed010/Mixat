@@ -19,13 +19,29 @@ const adminState = {
 document.addEventListener('DOMContentLoaded', async () => {
   initFirebase();
 
-  // تحقق من تسجيل الدخول
-  if (DataStore.isAdminLoggedIn()) {
-    showDashboard();
-    await loadAdminData();
-    renderActivePage();
+  // Firebase Auth بيحتاج وقت عشان يحمل الـ session المحفوظة
+  // لازم نستنى onAuthStateChanged عشان نعرف لو المستخدم مسجل دخول ولا لأ
+  if (IS_FIREBASE_CONFIGURED && auth) {
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        console.log('✅ Admin authenticated:', user.email);
+        showDashboard();
+        await loadAdminData();
+        renderActivePage();
+      } else {
+        console.log('🔒 No admin session found');
+        showLoginPage();
+      }
+    });
   } else {
-    showLoginPage();
+    // وضع localStorage (بدون Firebase)
+    if (DataStore.isAdminLoggedIn()) {
+      showDashboard();
+      await loadAdminData();
+      renderActivePage();
+    } else {
+      showLoginPage();
+    }
   }
 
   setupAdminEvents();
@@ -684,7 +700,26 @@ function renderSettingsPage() {
         <button type="submit" class="btn btn-outline"><i class="fas fa-key"></i> تغيير</button>
       </form>` : '<p style="color:var(--gold);font-size:.85rem">🔗 اذهب إلى Firebase Console لتغيير كلمة السر</p>'}
     </div>
-  </div>`;
+  </div>
+
+  ${IS_FIREBASE_CONFIGURED ? `
+  <div class="content-card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-cloud-upload-alt"></i> مزامنة البيانات مع Firebase</div>
+    </div>
+    <div class="card-body">
+      <p style="color:var(--text-400);font-size:.85rem;margin-bottom:16px">
+        لو قاعدة البيانات فاضية أو الأصناف مش ظاهرة عند الزباين، اضغط الزرار ده عشان ترفع كل البيانات الافتراضية على Firebase.
+        <br><strong style="color:var(--gold)">⚠️ ملاحظة:</strong> ده هيرفع البيانات الافتراضية من menu-data.js. لو عندك بيانات معدلة على Firebase، ممكن تتكتب عليها.
+      </p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-red" id="btn-seed-firestore" onclick="handleSeedFirestore()">
+          <i class="fas fa-cloud-upload-alt"></i> رفع البيانات على Firebase
+        </button>
+        <span id="seed-status" style="font-size:.85rem;color:var(--text-400)"></span>
+      </div>
+    </div>
+  </div>` : ''}`;
 }
 
 // ==========================================
@@ -1022,6 +1057,34 @@ async function saveSettings(e) {
     adminState.settings = settings;
     showAdminToast('✅ تم حفظ الإعدادات بنجاح');
   } catch { showAdminToast('❌ حدث خطأ في الحفظ', true); }
+}
+
+async function handleSeedFirestore() {
+  const btn = document.getElementById('btn-seed-firestore');
+  const status = document.getElementById('seed-status');
+
+  if (!confirm('هل تريد رفع كل البيانات الافتراضية على Firebase؟\nده هيرفع الأصناف والفئات والإعدادات والتقييمات.')) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الرفع...';
+  status.textContent = '';
+
+  try {
+    const results = await seedFirestore();
+    status.style.color = '#4CAF50';
+    status.textContent = `✅ تم رفع ${results.items} صنف + الفئات + الإعدادات + ${results.reviews} تقييم بنجاح!`;
+    showAdminToast('🎉 تم رفع كل البيانات على Firebase بنجاح!');
+    // أعد تحميل البيانات
+    await loadAdminData();
+    renderActivePage();
+  } catch (err) {
+    status.style.color = '#f44336';
+    status.textContent = '❌ خطأ: ' + err.message;
+    showAdminToast('❌ فشل رفع البيانات: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> رفع البيانات على Firebase';
+  }
 }
 
 function changeLocalPass(e) {
