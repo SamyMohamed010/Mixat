@@ -51,7 +51,7 @@ function initFirebase() {
 }
 
 // Helper: Timeout wrapper for promises to prevent UI hangs
-function withTimeout(promise, ms = 4000) {
+function withTimeout(promise, ms = 8000) {
   return Promise.race([
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), ms))
@@ -94,7 +94,7 @@ const DataStore = {
   async getSettings() {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        const doc = await withTimeout(db.collection("settings").doc("general").get(), 3000);
+        const doc = await withTimeout(db.collection("settings").doc("general").get(), 6000);
         if (doc.exists) return doc.data();
       } catch (e) {
         console.warn('⚠️ Firestore getSettings fallback:', e.message);
@@ -106,7 +106,7 @@ const DataStore = {
   async getMenuItems() {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        const snap = await withTimeout(db.collection("menu_items").get(), 4000);
+        const snap = await withTimeout(db.collection("menu_items").get(), 8000);
         if (!snap.empty) {
           // Firebase is the single source of truth - always use it directly
           const fsItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -128,7 +128,7 @@ const DataStore = {
   async getCategories() {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        const doc = await withTimeout(db.collection("settings").doc("categories").get(), 3000);
+        const doc = await withTimeout(db.collection("settings").doc("categories").get(), 6000);
         if (doc.exists && Array.isArray(doc.data().list)) {
           const normalized = normalizeCategories(doc.data().list);
           localStorage.setItem("mixat_categories", JSON.stringify(normalized));
@@ -147,7 +147,7 @@ const DataStore = {
   async getOffers() {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        const snap = await withTimeout(db.collection("offers").where("active", "==", true).get(), 3000);
+        const snap = await withTimeout(db.collection("offers").where("active", "==", true).get(), 6000);
         // Always use Firebase result (even if empty means no active offers)
         const offers = snap.docs ? snap.docs.map(d => ({ id: d.id, ...d.data() })) : [];
         const filtered = sanitizeOffers(offers);
@@ -164,7 +164,7 @@ const DataStore = {
   async getReviews() {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        const snap = await withTimeout(db.collection("reviews").where("approved", "==", true).get(), 3000);
+        const snap = await withTimeout(db.collection("reviews").where("approved", "==", true).get(), 6000);
         if (!snap.empty) return snap.docs.map(d => ({ id: d.id, ...d.data() }));
       } catch (e) {}
     }
@@ -175,7 +175,7 @@ const DataStore = {
   async saveSettings(data) {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        await withTimeout(db.collection("settings").doc("general").set(data, { merge: true }), 6000);
+        await withTimeout(db.collection("settings").doc("general").set(data, { merge: true }), 15000);
         console.log('✅ Settings saved to Firestore');
       } catch (e) {
         console.error('❌ Firestore saveSettings FAILED:', e.message);
@@ -191,10 +191,10 @@ const DataStore = {
       try {
         const { id, ...rest } = item;
         if (!id || id.startsWith("new_")) {
-          const ref = await withTimeout(db.collection("menu_items").add(rest), 6000);
+          const ref = await withTimeout(db.collection("menu_items").add(rest), 15000);
           savedId = ref.id;
         } else {
-          await withTimeout(db.collection("menu_items").doc(id).set(rest, { merge: true }), 6000);
+          await withTimeout(db.collection("menu_items").doc(id).set(rest, { merge: true }), 15000);
           savedId = id;
         }
         console.log('✅ Menu item saved to Firestore:', savedId);
@@ -221,7 +221,7 @@ const DataStore = {
   async deleteMenuItem(id) {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        await withTimeout(db.collection("menu_items").doc(id).delete(), 6000);
+        await withTimeout(db.collection("menu_items").doc(id).delete(), 15000);
         console.log('✅ Menu item deleted from Firestore:', id);
       } catch (e) {
         console.error('❌ Firestore deleteMenuItem FAILED:', e.message);
@@ -244,7 +244,7 @@ const DataStore = {
 
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        const doc = await withTimeout(db.collection("carts").doc(cleanEmail).get(), 3000);
+        const doc = await withTimeout(db.collection("carts").doc(cleanEmail).get(), 6000);
         if (doc.exists && doc.data() && Array.isArray(doc.data().items)) {
           const items = doc.data().items;
           localStorage.setItem(localKey, JSON.stringify(items));
@@ -269,7 +269,7 @@ const DataStore = {
           email: cleanEmail,
           items: cartItems,
           updatedAt: new Date().toISOString()
-        }, { merge: true }), 4000);
+        }, { merge: true }), 10000);
       } catch (e) {
         console.error("Error saving user cart to Firestore:", e);
       }
@@ -281,10 +281,10 @@ const DataStore = {
       try {
         const { id, ...rest } = offer;
         if (id && id.startsWith("new_")) {
-          const ref = await withTimeout(db.collection("offers").add(rest), 6000);
+          const ref = await withTimeout(db.collection("offers").add(rest), 15000);
           offer.id = ref.id;
         } else {
-          await withTimeout(db.collection("offers").doc(id).set(rest, { merge: true }), 6000);
+          await withTimeout(db.collection("offers").doc(id).set(rest, { merge: true }), 15000);
         }
         console.log('✅ Offer saved to Firestore:', offer.id);
       } catch (e) {
@@ -303,7 +303,7 @@ const DataStore = {
   async deleteOffer(id) {
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        await withTimeout(db.collection("offers").doc(id).delete(), 6000);
+        await withTimeout(db.collection("offers").doc(id).delete(), 15000);
         console.log('✅ Offer deleted from Firestore:', id);
       } catch (e) {
         console.error('❌ Firestore deleteOffer FAILED:', e.message);
@@ -348,7 +348,7 @@ const DataStore = {
     const normalized = normalizeCategories(categories);
     if (IS_FIREBASE_CONFIGURED && db) {
       try {
-        await withTimeout(db.collection("settings").doc("categories").set({ list: normalized }), 6000);
+        await withTimeout(db.collection("settings").doc("categories").set({ list: normalized }), 15000);
         console.log('✅ Categories saved to Firestore');
       } catch (e) {
         console.error('❌ Firestore saveCategories FAILED:', e.message);
