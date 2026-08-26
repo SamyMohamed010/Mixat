@@ -177,17 +177,20 @@ const DataStore = {
           db.collection("settings").doc("categories").get({ source: "server" }),
           8000
         );
-        if (doc.exists && Array.isArray(doc.data().list)) {
+        if (doc.exists && Array.isArray(doc.data().list) && doc.data().list.length > 0) {
           const normalized = normalizeCategories(doc.data().list);
           writeLocalJson("mixat_categories", normalized);
           return normalized;
         }
-        return normalizeCategories(DEFAULT_MENU_DATA.categories);
+        // مستند فاضي أو مش موجود → الفئات الافتراضية (مش قائمة فاضية)
+        const fallback = normalizeCategories(DEFAULT_MENU_DATA.categories);
+        writeLocalJson("mixat_categories", fallback);
+        return fallback;
       } catch (e) {
         console.error("❌ Firestore getCategories failed:", e.message);
         const stored = readLocalJson("mixat_categories", null);
         if (Array.isArray(stored) && stored.length) return normalizeCategories(stored);
-        throw e;
+        return normalizeCategories(DEFAULT_MENU_DATA.categories);
       }
     }
 
@@ -446,14 +449,31 @@ const DataStore = {
 
   async saveCategories(categories) {
     assertFirebaseWritable();
-    const normalized = normalizeCategories(categories);
+    if (isFirebaseReady() && (!auth || !auth.currentUser)) {
+      throw new Error('لازم تكون مسجّل دخول كأدمن عشان تحفظ. اعمل تسجيل خروج وادخل تاني.');
+    }
+    const normalized = normalizeCategories(categories).map(cat => ({
+      id: String(cat.id || ''),
+      name: String(cat.name || 'غير مسمى'),
+      icon: String(cat.icon || '🍽️'),
+      image: cat.image || null,
+    }));
+    if (!normalized.length) {
+      throw new Error('مفيش فئات للحفظ');
+    }
     if (isFirebaseReady()) {
       try {
-        await withTimeout(db.collection("settings").doc("categories").set({ list: normalized }), 15000);
+        await withTimeout(
+          db.collection("settings").doc("categories").set({ list: normalized }),
+          15000
+        );
         console.log('✅ Categories saved to Firestore');
       } catch (e) {
         console.error('❌ Firestore saveCategories FAILED:', e.message);
-        throw new Error('فشل حفظ الفئات على السيرفر: ' + e.message);
+        const msg = (e && e.code === 'permission-denied')
+          ? 'مرفوض من قواعد Firebase — تأكد إنك مسجّل دخول كأدمن وإن القواعد منشورة'
+          : (e.message || String(e));
+        throw new Error('فشل حفظ الفئات على السيرفر: ' + msg);
       }
     }
     writeLocalJson("mixat_categories", normalized);
@@ -549,9 +569,9 @@ function subscribeToLiveData({
 
   const unsubCategories = db.doc('settings/categories').onSnapshot(
     doc => {
-      const list = doc.exists && Array.isArray(doc.data().list)
-        ? doc.data().list
-        : DEFAULT_MENU_DATA.categories;
+      const raw = doc.exists && Array.isArray(doc.data().list) ? doc.data().list : null;
+      // قائمة فاضية على السيرفر مش معناها امسح الفئات من الواجهة
+      const list = raw && raw.length > 0 ? raw : DEFAULT_MENU_DATA.categories;
       const categories = normalizeCategories(list);
       writeLocalJson('mixat_categories', categories);
       if (typeof onCategoriesChange === 'function') onCategoriesChange(categories);
@@ -626,15 +646,37 @@ async function seedFirestore() {
   return results;
 }
 
-/** لو المنيو فاضي على السيرفر، ارفع البيانات الافتراضية مرة واحدة */
+/** لو المنيو أو الفئات فاضية على السيرفر، ارفع البيانات الافتراضية */
 async function ensureMenuSeeded() {
   if (!isFirebaseReady() || !auth || !auth.currentUser) return false;
-  const snap = await withTimeout(
-    db.collection('menu_items').limit(1).get({ source: 'server' }),
-    10000
-  );
-  if (!snap.empty) return false;
-  console.warn('📦 menu_items فارغ على Firestore — جاري الرفع التلقائي...');
-  await seedFirestore();
-  return true;
+
+  const [menuSnap, catDoc] = await Promise.all([
+    withTimeout(db.collection('menu_items').limit(1).get({ source: 'server' }), 10000),
+    withTimeout(db.collection('settings').doc('categories').get({ source: 'server' }), 10000),
+  ]);
+
+  const menuEmpty = menuSnap.empty;
+  const catsEmpty = !catDoc.exists
+    || !Array.isArray(catDoc.data().list)
+    || catDoc.data().list.length === 0;
+
+  if (!menuEmpty && !catsEmpty) return false;
+
+  // لو المنيو فاضي بالكامل → seed كامل
+  if (menuEmpty) {
+    console.warn('📦 Firestore فاضي — جاري الرفع التلقائي...');
+    await seedFirestore();
+    return true;
+  }
+
+  // المنيو موجود بس الفئات ناقصة → ارفع الفئات فقط (من غير ما تمسح الأصناف)
+  if (catsEmpty) {
+    console.warn('📦 الفئات فاضية على Firestore — جاري رفع الفئات الافتراضية...');
+    const categories = normalizeCategories(DEFAULT_MENU_DATA.categories);
+    await db.collection('settings').doc('categories').set({ list: categories });
+    writeLocalJson('mixat_categories', categories);
+    return true;
+  }
+
+  return false;
 }

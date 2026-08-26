@@ -54,7 +54,7 @@ async function loadAdminData() {
     if (typeof ensureMenuSeeded === 'function') {
       const seeded = await ensureMenuSeeded();
       if (seeded) {
-        showAdminToast('📦 تم رفع المنيو الافتراضي على Firebase تلقائياً');
+        showAdminToast('📦 تم تجهيز البيانات الافتراضية على Firebase تلقائياً');
       }
     }
 
@@ -986,25 +986,47 @@ function openCatModal(catId) {
   document.getElementById('cat-modal').classList.add('open');
 }
 
+function makeCategoryId(name) {
+  const base = String(name || 'cat')
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^\w\u0600-\u06FF_]/g, '')
+    .toLowerCase() || 'cat';
+  return `${base}_${Date.now()}`;
+}
+
 async function saveCat(e) {
   e.preventDefault();
   const id   = document.getElementById('cat-id').value;
   const name = document.getElementById('cat-name').value.trim();
-  const icon = document.getElementById('cat-icon').value.trim();
+  const icon = document.getElementById('cat-icon').value.trim() || '🍽️';
+
+  if (!name) {
+    showAdminToast('❌ اكتب اسم الفئة', true);
+    return;
+  }
+
+  // لو الفئات كانت فاضية بالغلط، ابدأ من الافتراضي قبل الإضافة
+  if (!adminState.categories.length) {
+    adminState.categories = normalizeCategories(DEFAULT_MENU_DATA.categories);
+  }
 
   if (id) {
     const cat = adminState.categories.find(c => c.id === id);
     if (cat) { cat.name = name; cat.icon = icon; }
   } else {
-    adminState.categories.push({ id: name.replace(/\s+/g,'_').toLowerCase() + '_' + Date.now(), name, icon });
+    adminState.categories.push({ id: makeCategoryId(name), name, icon, image: null });
   }
 
   try {
-    await DataStore.saveCategories(adminState.categories);
+    adminState.categories = await DataStore.saveCategories(adminState.categories);
     closeModal('cat-modal');
     renderActivePage();
     showAdminToast('✅ تم حفظ الفئة');
-  } catch { showAdminToast('❌ حدث خطأ', true); }
+  } catch (err) {
+    console.error('❌ saveCat:', err);
+    showAdminToast('❌ ' + (err.message || 'حدث خطأ في الحفظ'), true);
+  }
 }
 
 async function deleteCat(id) {
