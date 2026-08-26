@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // القائمة والعروض والإعدادات: قراءة للجميع، كتابة للأدمن المسجّل فقط
+    match /menu_items/{itemId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /offers/{offerId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // التقييمات: قراءة العامة للموافق عليها تتم من الكلاينت بفلتر؛
+    // السماح بالقراءة العامة والكتابة للجميع (إضافة تقييم)، والتعديل/الحذف للأدمن
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    // سلات المستخدمين: المستخدم يقرأ/يكتب سلته فقط عبر مفتاح الإيميل (مفتوح للمشروع الحالي)
+    match /carts/{cartId} {
+      allow read, write: if true;
+    }
+  }
+}

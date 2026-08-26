@@ -49,12 +49,21 @@ async function loadAllData() {
     state.offers     = offers;
     state.reviews    = reviews;
   } catch (e) {
-    console.error('خطأ في تحميل البيانات:', e);
-    state.settings   = DEFAULT_SETTINGS;
-    state.categories = DEFAULT_MENU_DATA.categories;
-    state.items      = DEFAULT_MENU_DATA.items;
-    state.offers     = DEFAULT_OFFERS;
-    state.reviews    = DEFAULT_REVIEWS;
+    console.error('خطأ في تحميل البيانات من Firebase:', e);
+    // كاش محلي مؤقت فقط — ممنوع DEFAULT_MENU_DATA لأنها بتخفي مشكلة المزامنة
+    try {
+      state.settings   = JSON.parse(localStorage.getItem('mixat_settings') || 'null') || DEFAULT_SETTINGS;
+      state.categories = JSON.parse(localStorage.getItem('mixat_categories') || 'null') || DEFAULT_MENU_DATA.categories;
+      state.items      = JSON.parse(localStorage.getItem('mixat_menu_items') || '[]');
+      state.offers     = JSON.parse(localStorage.getItem('mixat_offers') || '[]');
+      state.reviews    = JSON.parse(localStorage.getItem('mixat_reviews') || 'null') || DEFAULT_REVIEWS;
+    } catch (_) {
+      state.settings   = DEFAULT_SETTINGS;
+      state.categories = DEFAULT_MENU_DATA.categories;
+      state.items      = [];
+      state.offers     = [];
+      state.reviews    = DEFAULT_REVIEWS;
+    }
   }
 }
 

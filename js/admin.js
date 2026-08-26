@@ -50,10 +50,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ===== تحميل البيانات =====
 async function loadAdminData() {
   try {
+    // لو قاعدة Firebase فاضية، ارفع البيانات الافتراضية مرة واحدة عشان التعديلات توصل لكل الأجهزة
+    if (typeof ensureMenuSeeded === 'function') {
+      const seeded = await ensureMenuSeeded();
+      if (seeded) {
+        showAdminToast('📦 تم رفع المنيو الافتراضي على Firebase تلقائياً');
+      }
+    }
+
     const [items, categories, offers, reviews, settings] = await Promise.all([
       DataStore.getMenuItems(),
       DataStore.getCategories(),
-      DataStore.getAllReviews(),
+      DataStore.getAllOffers(),
       DataStore.getAllReviews(),
       DataStore.getSettings(),
     ]);
@@ -63,14 +71,65 @@ async function loadAdminData() {
     adminState.reviews    = reviews;
     adminState.settings   = settings;
     updateSidebarBadges();
+    startAdminLiveSync();
   } catch (e) {
     console.error('خطأ في تحميل بيانات الداشبورد:', e);
-    adminState.items      = DEFAULT_MENU_DATA.items;
-    adminState.categories = DEFAULT_MENU_DATA.categories;
-    adminState.offers     = DEFAULT_OFFERS;
-    adminState.reviews    = DEFAULT_REVIEWS;
-    adminState.settings   = DEFAULT_SETTINGS;
+    showAdminToast('❌ فشل تحميل البيانات من Firebase: ' + (e.message || e), true);
+    // ممنوع استبدال بيانات السيرفر بـ defaults محلية — ده كان سبب إن التعديل يظهر عندك بس
+    adminState.items      = adminState.items.length ? adminState.items : [];
+    adminState.categories = adminState.categories.length ? adminState.categories : [];
+    adminState.offers     = adminState.offers.length ? adminState.offers : [];
+    adminState.reviews    = adminState.reviews.length ? adminState.reviews : [];
+    adminState.settings   = adminState.settings || DEFAULT_SETTINGS;
   }
+}
+
+let adminLiveUnsub = null;
+function startAdminLiveSync() {
+  if (!IS_FIREBASE_CONFIGURED || !db) return;
+  if (typeof adminLiveUnsub === 'function') {
+    adminLiveUnsub();
+    adminLiveUnsub = null;
+  }
+
+  adminLiveUnsub = subscribeToLiveData({
+    onMenuChange: items => {
+      adminState.items = items;
+      if (['dashboard', 'menu', 'bestSellers'].includes(adminState.activePage)) {
+        renderActivePage();
+      }
+      updateSidebarBadges();
+    },
+    onOffersChange: async () => {
+      // اللّيف سينك بيجيب النشطة بس — نعيد تحميل الكل للأدمن
+      try {
+        adminState.offers = await DataStore.getAllOffers();
+        if (adminState.activePage === 'offers' || adminState.activePage === 'dashboard') {
+          renderActivePage();
+        }
+        updateSidebarBadges();
+      } catch (e) { /* ignore */ }
+    },
+    onSettingsChange: settings => {
+      adminState.settings = settings || DEFAULT_SETTINGS;
+      if (adminState.activePage === 'settings') renderActivePage();
+    },
+    onCategoriesChange: categories => {
+      adminState.categories = categories || [];
+      if (['categories', 'menu', 'dashboard'].includes(adminState.activePage)) {
+        renderActivePage();
+      }
+    },
+    onReviewsChange: async () => {
+      try {
+        adminState.reviews = await DataStore.getAllReviews();
+        if (adminState.activePage === 'reviews' || adminState.activePage === 'dashboard') {
+          renderActivePage();
+        }
+        updateSidebarBadges();
+      } catch (e) { /* ignore */ }
+    },
+  });
 }
 
 // ==========================================
@@ -711,6 +770,7 @@ function renderSettingsPage() {
       <p style="color:var(--text-400);font-size:.85rem;margin-bottom:16px">
         لو قاعدة البيانات فاضية أو الأصناف مش ظاهرة عند الزباين، اضغط الزرار ده عشان ترفع كل البيانات الافتراضية على Firebase.
         <br><strong style="color:var(--gold)">⚠️ ملاحظة:</strong> ده هيرفع البيانات الافتراضية من menu-data.js. لو عندك بيانات معدلة على Firebase، ممكن تتكتب عليها.
+        <br><strong style="color:var(--gold)">🔐 مهم:</strong> انشر قواعد Firestore من ملف <code>firestore.rules</code> (قراءة عامة + كتابة للأدمن) عشان كل الزوار يشوفوا التحديثات.
       </p>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <button class="btn btn-red" id="btn-seed-firestore" onclick="handleSeedFirestore()">
@@ -1029,11 +1089,15 @@ async function toggleReview(id, approve) {
 
 async function deleteReview(id) {
   if (!confirm('هل تريد حذف هذا التقييم؟')) return;
-  adminState.reviews = adminState.reviews.filter(r => r.id !== id);
-  localStorage.setItem('mixat_reviews', JSON.stringify(adminState.reviews));
-  renderActivePage();
-  updateSidebarBadges();
-  showAdminToast('✅ تم حذف التقييم');
+  try {
+    await DataStore.deleteReview(id);
+    adminState.reviews = adminState.reviews.filter(r => r.id !== id);
+    renderActivePage();
+    updateSidebarBadges();
+    showAdminToast('✅ تم حذف التقييم');
+  } catch (err) {
+    showAdminToast('❌ فشل حذف التقييم: ' + (err.message || err), true);
+  }
 }
 
 // ==========================================

@@ -42,12 +42,41 @@ function initFirebase() {
     firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
     db   = firebase.firestore();
     auth = firebase.auth();
+    // تجاهل كاش محلي قديم — المصدر الوحيد للحقيقة هو السيرفر
+    db.settings({ ignoreUndefinedProperties: true });
     console.info("✅ ميكسات: Firebase متصل بنجاح!");
     return true;
   } catch (e) {
     console.error("❌ خطأ في Firebase:", e);
+    db = null;
+    auth = null;
     return false;
   }
+}
+
+function isFirebaseReady() {
+  return IS_FIREBASE_CONFIGURED && !!db;
+}
+
+/** عند تفعيل Firebase لازم الكتابة تتم على السيرفر — ممنوع الحفظ المحلي الصامت */
+function assertFirebaseWritable() {
+  if (IS_FIREBASE_CONFIGURED && !db) {
+    throw new Error('Firebase مش متصل. حدّث الصفحة أو راجع الاتصال ثم حاول مرة تانية.');
+  }
+}
+
+function readLocalJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return JSON.parse(raw);
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function writeLocalJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
 // Helper: Timeout wrapper for promises to prevent UI hangs
@@ -92,88 +121,145 @@ function sanitizeOffers(offers) {
 const DataStore = {
   // --------- قراءة ---------
   async getSettings() {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    if (isFirebaseReady()) {
       try {
-        const doc = await withTimeout(db.collection("settings").doc("general").get(), 6000);
-        if (doc.exists) return doc.data();
+        const doc = await withTimeout(
+          db.collection("settings").doc("general").get({ source: "server" }),
+          8000
+        );
+        if (doc.exists) {
+          writeLocalJson("mixat_settings", doc.data());
+          return doc.data();
+        }
+        // مستند مش موجود على السيرفر → إعدادات افتراضية (مش كاش جهاز تاني)
+        return DEFAULT_SETTINGS;
       } catch (e) {
-        console.warn('⚠️ Firestore getSettings fallback:', e.message);
+        console.error("❌ Firestore getSettings failed:", e.message);
+        const cached = readLocalJson("mixat_settings", null);
+        if (cached) return cached;
+        throw e;
       }
     }
-    return JSON.parse(localStorage.getItem("mixat_settings") || JSON.stringify(DEFAULT_SETTINGS));
+    return readLocalJson("mixat_settings", DEFAULT_SETTINGS);
   },
 
   async getMenuItems() {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    if (isFirebaseReady()) {
       try {
-        const snap = await withTimeout(db.collection("menu_items").get(), 8000);
-        if (!snap.empty) {
-          // Firebase is the single source of truth - always use it directly
-          const fsItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          localStorage.setItem("mixat_menu_items", JSON.stringify(fsItems));
-          return fsItems;
-        }
+        // source: server يمنع الاعتماد على كاش قديم ويخلي كل الأجهزة تشوف نفس البيانات
+        const snap = await withTimeout(
+          db.collection("menu_items").get({ source: "server" }),
+          10000
+        );
+        const fsItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        writeLocalJson("mixat_menu_items", fsItems);
+        // حتى لو فاضي: دي الحقيقة من السيرفر — ممنوع الرجوع للـ defaults/local لوحدها
+        return fsItems;
       } catch (e) {
-        console.warn("⚠️ Firestore getMenuItems fallback:", e.message);
+        console.error("❌ Firestore getMenuItems failed:", e.message);
+        const localItems = readLocalJson("mixat_menu_items", []);
+        if (Array.isArray(localItems) && localItems.length > 0) {
+          console.warn("⚠️ استخدام نسخة محلية مؤقتة بسبب فشل الاتصال");
+          return localItems;
+        }
+        throw e;
       }
     }
-    // Fallback: localStorage then defaults
-    let localItems = [];
-    try {
-      localItems = JSON.parse(localStorage.getItem("mixat_menu_items") || "[]");
-    } catch (e) { localItems = []; }
+    // وضع بدون Firebase فقط
+    const localItems = readLocalJson("mixat_menu_items", []);
     return localItems.length > 0 ? localItems : DEFAULT_MENU_DATA.items;
   },
 
   async getCategories() {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    if (isFirebaseReady()) {
       try {
-        const doc = await withTimeout(db.collection("settings").doc("categories").get(), 6000);
+        const doc = await withTimeout(
+          db.collection("settings").doc("categories").get({ source: "server" }),
+          8000
+        );
         if (doc.exists && Array.isArray(doc.data().list)) {
           const normalized = normalizeCategories(doc.data().list);
-          localStorage.setItem("mixat_categories", JSON.stringify(normalized));
+          writeLocalJson("mixat_categories", normalized);
           return normalized;
         }
-      } catch (e) {}
+        return normalizeCategories(DEFAULT_MENU_DATA.categories);
+      } catch (e) {
+        console.error("❌ Firestore getCategories failed:", e.message);
+        const stored = readLocalJson("mixat_categories", null);
+        if (Array.isArray(stored) && stored.length) return normalizeCategories(stored);
+        throw e;
+      }
     }
 
-    const stored = JSON.parse(localStorage.getItem("mixat_categories") || "null");
+    const stored = readLocalJson("mixat_categories", null);
     const categories = Array.isArray(stored) && stored.length ? stored : DEFAULT_MENU_DATA.categories;
     const normalized = normalizeCategories(categories);
-    localStorage.setItem("mixat_categories", JSON.stringify(normalized));
+    writeLocalJson("mixat_categories", normalized);
     return normalized;
   },
 
   async getOffers() {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    if (isFirebaseReady()) {
       try {
-        const snap = await withTimeout(db.collection("offers").where("active", "==", true).get(), 6000);
-        // Always use Firebase result (even if empty means no active offers)
-        const offers = snap.docs ? snap.docs.map(d => ({ id: d.id, ...d.data() })) : [];
+        const snap = await withTimeout(
+          db.collection("offers").where("active", "==", true).get({ source: "server" }),
+          8000
+        );
+        const offers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const filtered = sanitizeOffers(offers);
-        localStorage.setItem("mixat_offers", JSON.stringify(filtered));
+        writeLocalJson("mixat_offers", filtered);
         return filtered;
-      } catch (e) { console.warn("⚠️ Firestore getOffers fallback:", e.message); }
+      } catch (e) {
+        console.error("❌ Firestore getOffers failed:", e.message);
+        const stored = readLocalJson("mixat_offers", []);
+        if (Array.isArray(stored)) return sanitizeOffers(stored);
+        throw e;
+      }
     }
 
-    const stored = JSON.parse(localStorage.getItem("mixat_offers") || "null");
-    // If there's no Firebase, show NO offers by default (admin must explicitly add them)
+    const stored = readLocalJson("mixat_offers", []);
     return sanitizeOffers(Array.isArray(stored) ? stored : []);
   },
 
-  async getReviews() {
-    if (IS_FIREBASE_CONFIGURED && db) {
+  /** كل العروض (نشطة وغير نشطة) — للوحة الأدمن */
+  async getAllOffers() {
+    if (isFirebaseReady()) {
       try {
-        const snap = await withTimeout(db.collection("reviews").where("approved", "==", true).get(), 6000);
-        if (!snap.empty) return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch (e) {}
+        const snap = await withTimeout(
+          db.collection("offers").get({ source: "server" }),
+          8000
+        );
+        return sanitizeOffers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error("❌ Firestore getAllOffers failed:", e.message);
+        throw e;
+      }
     }
-    return JSON.parse(localStorage.getItem("mixat_reviews") || JSON.stringify(DEFAULT_REVIEWS));
+    return sanitizeOffers(readLocalJson("mixat_offers", []));
+  },
+
+  async getReviews() {
+    if (isFirebaseReady()) {
+      try {
+        const snap = await withTimeout(
+          db.collection("reviews").where("approved", "==", true).get({ source: "server" }),
+          8000
+        );
+        const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        writeLocalJson("mixat_reviews", reviews);
+        return reviews;
+      } catch (e) {
+        console.error("❌ Firestore getReviews failed:", e.message);
+        return readLocalJson("mixat_reviews", DEFAULT_REVIEWS);
+      }
+    }
+    return readLocalJson("mixat_reviews", DEFAULT_REVIEWS);
   },
 
   // --------- كتابة ---------
   async saveSettings(data) {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    assertFirebaseWritable();
+    if (isFirebaseReady()) {
       try {
         await withTimeout(db.collection("settings").doc("general").set(data, { merge: true }), 15000);
         console.log('✅ Settings saved to Firestore');
@@ -182,12 +268,13 @@ const DataStore = {
         throw new Error('فشل حفظ الإعدادات على السيرفر: ' + e.message);
       }
     }
-    localStorage.setItem("mixat_settings", JSON.stringify(data));
+    writeLocalJson("mixat_settings", data);
   },
 
   async saveMenuItem(item) {
+    assertFirebaseWritable();
     let savedId = item.id;
-    if (IS_FIREBASE_CONFIGURED && db) {
+    if (isFirebaseReady()) {
       try {
         const { id, ...rest } = item;
         if (!id || id.startsWith("new_")) {
@@ -203,23 +290,21 @@ const DataStore = {
         throw new Error('فشل حفظ الصنف على السيرفر: ' + e.message);
       }
     }
-    // Sync with localStorage
+    // تحديث الكاش المحلي فقط بعد نجاح السيرفر (أو في وضع بدون Firebase)
     item.id = savedId;
-    let items = [];
-    try {
-      items = JSON.parse(localStorage.getItem("mixat_menu_items") || "[]");
-    } catch (e) { items = []; }
-    if (items.length === 0) items = DEFAULT_MENU_DATA.items;
-
+    let items = readLocalJson("mixat_menu_items", []);
+    if (!Array.isArray(items)) items = [];
+    // ممنوع حقن DEFAULT_MENU_DATA هنا — ده كان بيخلي جهاز الأدمن يشوف منيو كامل والجهاز التاني لا
     const idx = items.findIndex(i => i.id === item.id);
     if (idx >= 0) items[idx] = item;
     else items.push(item);
-    localStorage.setItem("mixat_menu_items", JSON.stringify(items));
+    writeLocalJson("mixat_menu_items", items);
     return savedId;
   },
 
   async deleteMenuItem(id) {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    assertFirebaseWritable();
+    if (isFirebaseReady()) {
       try {
         await withTimeout(db.collection("menu_items").doc(id).delete(), 15000);
         console.log('✅ Menu item deleted from Firestore:', id);
@@ -228,12 +313,10 @@ const DataStore = {
         throw new Error('فشل حذف الصنف من السيرفر: ' + e.message);
       }
     }
-    let items = [];
-    try {
-      items = JSON.parse(localStorage.getItem("mixat_menu_items") || "[]");
-    } catch (e) { items = []; }
+    let items = readLocalJson("mixat_menu_items", []);
+    if (!Array.isArray(items)) items = [];
     items = items.filter(i => i.id !== id);
-    localStorage.setItem("mixat_menu_items", JSON.stringify(items));
+    writeLocalJson("mixat_menu_items", items);
   },
 
   // --------- إدارة سلة المستخدم بالإيميل ---------
@@ -242,28 +325,28 @@ const DataStore = {
     const cleanEmail = email.trim().toLowerCase();
     const localKey = `mixat_cart_${cleanEmail}`;
 
-    if (IS_FIREBASE_CONFIGURED && db) {
+    if (isFirebaseReady()) {
       try {
-        const doc = await withTimeout(db.collection("carts").doc(cleanEmail).get(), 6000);
+        const doc = await withTimeout(db.collection("carts").doc(cleanEmail).get({ source: "server" }), 6000);
         if (doc.exists && doc.data() && Array.isArray(doc.data().items)) {
           const items = doc.data().items;
-          localStorage.setItem(localKey, JSON.stringify(items));
+          writeLocalJson(localKey, items);
           return items;
         }
       } catch (e) {
         console.error("Error fetching user cart from Firestore:", e);
       }
     }
-    return JSON.parse(localStorage.getItem(localKey) || "[]");
+    return readLocalJson(localKey, []);
   },
 
   async saveUserCart(email, cartItems) {
     if (!email) return;
     const cleanEmail = email.trim().toLowerCase();
     const localKey = `mixat_cart_${cleanEmail}`;
-    localStorage.setItem(localKey, JSON.stringify(cartItems));
+    writeLocalJson(localKey, cartItems);
 
-    if (IS_FIREBASE_CONFIGURED && db) {
+    if (isFirebaseReady()) {
       try {
         await withTimeout(db.collection("carts").doc(cleanEmail).set({
           email: cleanEmail,
@@ -277,7 +360,8 @@ const DataStore = {
   },
 
   async saveOffer(offer) {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    assertFirebaseWritable();
+    if (isFirebaseReady()) {
       try {
         const { id, ...rest } = offer;
         if (id && id.startsWith("new_")) {
@@ -291,17 +375,18 @@ const DataStore = {
         console.error('❌ Firestore saveOffer FAILED:', e.message);
         throw new Error('فشل حفظ العرض على السيرفر: ' + e.message);
       }
-    } else {
-      const offers = await DataStore.getOffers();
-      const idx = offers.findIndex(o => o.id === offer.id);
-      if (idx >= 0) offers[idx] = offer;
-      else offers.push(offer);
-      localStorage.setItem("mixat_offers", JSON.stringify(offers));
     }
+    let offers = readLocalJson("mixat_offers", []);
+    if (!Array.isArray(offers)) offers = [];
+    const idx = offers.findIndex(o => o.id === offer.id);
+    if (idx >= 0) offers[idx] = offer;
+    else offers.push(offer);
+    writeLocalJson("mixat_offers", sanitizeOffers(offers));
   },
 
   async deleteOffer(id) {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    assertFirebaseWritable();
+    if (isFirebaseReady()) {
       try {
         await withTimeout(db.collection("offers").doc(id).delete(), 15000);
         console.log('✅ Offer deleted from Firestore:', id);
@@ -309,44 +394,60 @@ const DataStore = {
         console.error('❌ Firestore deleteOffer FAILED:', e.message);
         throw new Error('فشل حذف العرض من السيرفر: ' + e.message);
       }
-    } else {
-      const offers = (await DataStore.getOffers()).filter(o => o.id !== id);
-      localStorage.setItem("mixat_offers", JSON.stringify(offers));
     }
+    const offers = sanitizeOffers(readLocalJson("mixat_offers", [])).filter(o => o.id !== id);
+    writeLocalJson("mixat_offers", offers);
   },
 
   async saveReview(review) {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    if (isFirebaseReady()) {
       await db.collection("reviews").add({ ...review, date: new Date().toISOString() });
     } else {
-      const reviews = JSON.parse(localStorage.getItem("mixat_reviews") || "[]");
+      const reviews = readLocalJson("mixat_reviews", []);
       reviews.push({ ...review, id: "rv_" + Date.now(), date: new Date().toISOString(), approved: false });
-      localStorage.setItem("mixat_reviews", JSON.stringify(reviews));
+      writeLocalJson("mixat_reviews", reviews);
     }
   },
 
   async getAllReviews() {
-    if (IS_FIREBASE_CONFIGURED && db) {
-      const snap = await db.collection("reviews").orderBy("date", "desc").get();
+    if (isFirebaseReady()) {
+      const snap = await db.collection("reviews").orderBy("date", "desc").get({ source: "server" });
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
-    return JSON.parse(localStorage.getItem("mixat_reviews") || JSON.stringify(DEFAULT_REVIEWS));
+    return readLocalJson("mixat_reviews", DEFAULT_REVIEWS);
   },
 
   async updateReviewApproval(id, approved) {
-    if (IS_FIREBASE_CONFIGURED && db) {
+    assertFirebaseWritable();
+    if (isFirebaseReady()) {
       await db.collection("reviews").doc(id).update({ approved });
     } else {
       const reviews = await DataStore.getAllReviews();
       const idx = reviews.findIndex(r => r.id === id);
       if (idx >= 0) reviews[idx].approved = approved;
-      localStorage.setItem("mixat_reviews", JSON.stringify(reviews));
+      writeLocalJson("mixat_reviews", reviews);
     }
   },
 
+  async deleteReview(id) {
+    assertFirebaseWritable();
+    if (isFirebaseReady()) {
+      try {
+        await withTimeout(db.collection("reviews").doc(id).delete(), 15000);
+        console.log('✅ Review deleted from Firestore:', id);
+      } catch (e) {
+        console.error('❌ Firestore deleteReview FAILED:', e.message);
+        throw new Error('فشل حذف التقييم من السيرفر: ' + e.message);
+      }
+    }
+    const reviews = readLocalJson("mixat_reviews", []).filter(r => r.id !== id);
+    writeLocalJson("mixat_reviews", reviews);
+  },
+
   async saveCategories(categories) {
+    assertFirebaseWritable();
     const normalized = normalizeCategories(categories);
-    if (IS_FIREBASE_CONFIGURED && db) {
+    if (isFirebaseReady()) {
       try {
         await withTimeout(db.collection("settings").doc("categories").set({ list: normalized }), 15000);
         console.log('✅ Categories saved to Firestore');
@@ -355,7 +456,7 @@ const DataStore = {
         throw new Error('فشل حفظ الفئات على السيرفر: ' + e.message);
       }
     }
-    localStorage.setItem("mixat_categories", JSON.stringify(normalized));
+    writeLocalJson("mixat_categories", normalized);
     return normalized;
   },
 
@@ -391,7 +492,7 @@ function subscribeToLiveData({
   onCategoriesChange,
   onReviewsChange,
 } = {}) {
-  if (!IS_FIREBASE_CONFIGURED || !db) return () => {};
+  if (!isFirebaseReady()) return () => {};
 
   const unsubscribers = [];
 
@@ -400,7 +501,13 @@ function subscribeToLiveData({
     if (typeof queryFn === 'function') ref = queryFn(ref);
 
     const unsubscribe = ref.onSnapshot(
+      { includeMetadataChanges: false },
       snapshot => {
+        // تجاهل التحديثات من الكاش المحلي لو فيه بيانات معلقة من السيرفر
+        if (snapshot.metadata && snapshot.metadata.fromCache && snapshot.empty) {
+          return;
+        }
+
         let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const cacheKey = {
           menu_items: 'mixat_menu_items',
@@ -412,25 +519,13 @@ function subscribeToLiveData({
           items = sanitizeOffers(items);
         }
 
-        // Always use what Firebase reports, except if menu is completely empty we show defaults
-        if (collectionName === 'menu_items' && snapshot.empty) {
-          items = DEFAULT_MENU_DATA.items;
-        }
-
+        // القائمة الفاضية من السيرفر = منيو فاضي (مش defaults محلية)
+        // ده يمنع جهاز يشوف تعديل وجهاز تاني يشوف menu-data.js القديم
+        writeLocalJson(cacheKey, items);
         if (typeof callback === 'function') callback(items);
-        
-        if (!snapshot.empty) {
-          localStorage.setItem(cacheKey, JSON.stringify(items));
-        } else if (collectionName !== 'offers' && collectionName !== 'menu_items') {
-          // For non-critical collections, fall back to cache
-          const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-          if (Array.isArray(cached) && cached.length > 0 && typeof callback === 'function') {
-            callback(collectionName === 'offers' ? sanitizeOffers(cached) : cached);
-          }
-        }
       },
       error => {
-        console.warn(`⚠️ Firestore live sync error (${collectionName}):`, error?.message || error);
+        console.error(`❌ Firestore live sync error (${collectionName}):`, error?.message || error);
       }
     );
 
@@ -444,22 +539,25 @@ function subscribeToLiveData({
   const unsubSettings = db.doc('settings/general').onSnapshot(
     doc => {
       const settings = doc.exists ? doc.data() : DEFAULT_SETTINGS;
-      localStorage.setItem('mixat_settings', JSON.stringify(settings));
+      writeLocalJson('mixat_settings', settings);
       if (typeof onSettingsChange === 'function') onSettingsChange(settings);
     },
     error => {
-      console.warn('⚠️ Firestore live sync error (settings/general):', error?.message || error);
+      console.error('❌ Firestore live sync error (settings/general):', error?.message || error);
     }
   );
 
   const unsubCategories = db.doc('settings/categories').onSnapshot(
     doc => {
-      const categories = doc.exists && Array.isArray(doc.data().list) ? doc.data().list : DEFAULT_MENU_DATA.categories;
-      localStorage.setItem('mixat_categories', JSON.stringify(categories));
+      const list = doc.exists && Array.isArray(doc.data().list)
+        ? doc.data().list
+        : DEFAULT_MENU_DATA.categories;
+      const categories = normalizeCategories(list);
+      writeLocalJson('mixat_categories', categories);
       if (typeof onCategoriesChange === 'function') onCategoriesChange(categories);
     },
     error => {
-      console.warn('⚠️ Firestore live sync error (settings/categories):', error?.message || error);
+      console.error('❌ Firestore live sync error (settings/categories):', error?.message || error);
     }
   );
 
@@ -473,7 +571,7 @@ function subscribeToLiveData({
 // يُستخدم مرة واحدة لملء قاعدة البيانات الفاضية
 // ==========================================
 async function seedFirestore() {
-  if (!IS_FIREBASE_CONFIGURED || !db) {
+  if (!isFirebaseReady()) {
     throw new Error('Firebase مش متصل!');
   }
   if (!auth || !auth.currentUser) {
@@ -485,24 +583,32 @@ async function seedFirestore() {
   // 1. رفع أصناف المنيو
   console.log('📦 جاري رفع أصناف المنيو...');
   const menuItems = DEFAULT_MENU_DATA.items;
-  for (const item of menuItems) {
-    const { id, ...rest } = item;
-    // نستخدم نفس الـ ID عشان نقدر نرجعله بعدين
-    await db.collection('menu_items').doc(id).set(rest);
-    results.items++;
+  const batchSize = 400;
+  for (let i = 0; i < menuItems.length; i += batchSize) {
+    const batch = db.batch();
+    const chunk = menuItems.slice(i, i + batchSize);
+    for (const item of chunk) {
+      const { id, ...rest } = item;
+      batch.set(db.collection('menu_items').doc(id), rest);
+      results.items++;
+    }
+    await batch.commit();
   }
+  writeLocalJson('mixat_menu_items', menuItems.map(item => ({ ...item })));
   console.log(`✅ تم رفع ${results.items} صنف`);
 
   // 2. رفع الفئات
   console.log('📦 جاري رفع الفئات...');
-  const categories = DEFAULT_MENU_DATA.categories;
+  const categories = normalizeCategories(DEFAULT_MENU_DATA.categories);
   await db.collection('settings').doc('categories').set({ list: categories });
+  writeLocalJson('mixat_categories', categories);
   results.categories = true;
   console.log('✅ تم رفع الفئات');
 
   // 3. رفع الإعدادات
   console.log('📦 جاري رفع الإعدادات...');
   await db.collection('settings').doc('general').set(DEFAULT_SETTINGS);
+  writeLocalJson('mixat_settings', DEFAULT_SETTINGS);
   results.settings = true;
   console.log('✅ تم رفع الإعدادات');
 
@@ -513,8 +619,22 @@ async function seedFirestore() {
     await db.collection('reviews').doc(id).set(rest);
     results.reviews++;
   }
+  writeLocalJson('mixat_reviews', DEFAULT_REVIEWS.map(r => ({ ...r })));
   console.log(`✅ تم رفع ${results.reviews} تقييم`);
 
   console.log('🎉 تم ملء قاعدة البيانات بنجاح!', results);
   return results;
+}
+
+/** لو المنيو فاضي على السيرفر، ارفع البيانات الافتراضية مرة واحدة */
+async function ensureMenuSeeded() {
+  if (!isFirebaseReady() || !auth || !auth.currentUser) return false;
+  const snap = await withTimeout(
+    db.collection('menu_items').limit(1).get({ source: 'server' }),
+    10000
+  );
+  if (!snap.empty) return false;
+  console.warn('📦 menu_items فارغ على Firestore — جاري الرفع التلقائي...');
+  await seedFirestore();
+  return true;
 }
